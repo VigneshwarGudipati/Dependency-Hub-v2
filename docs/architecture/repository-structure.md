@@ -268,6 +268,9 @@ database/
 - **env.py always overrides alembic.ini sqlalchemy.url** from `.env` at runtime
 - **No business logic in route handlers** — routes delegate to services
 - **No database queries in Pydantic schemas**
+- **Test suites are strictly separated** to avoid module collisions:
+  - Run DB tests: `pytest -v tests`
+  - Run API tests: `pytest -v backend/tests`
 
 ---
 

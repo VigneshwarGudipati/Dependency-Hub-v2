@@ -22,8 +22,8 @@ $Results = @()
 
 function Write-Step { param($msg) Write-Host "`n[VERIFY] $msg" -ForegroundColor Cyan }
 function Pass { param($label) $script:Results += @{ Label=$label; Status="PASS" }; Write-Host "  [PASS] $label" -ForegroundColor Green }
-function Fail { param($label, $reason) $script:Results += @{ Label=$label; Status="FAIL"; Reason=$reason }; Write-Host "  [FAIL] $label — $reason" -ForegroundColor Red }
-function Skip { param($label, $reason) $script:Results += @{ Label=$label; Status="SKIP"; Reason=$reason }; Write-Host "  [SKIP] $label — $reason" -ForegroundColor Yellow }
+function Fail { param($label, $reason) $script:Results += @{ Label=$label; Status="FAIL"; Reason=$reason }; Write-Host "  [FAIL] $label - $reason" -ForegroundColor Red }
+function Skip { param($label, $reason) $script:Results += @{ Label=$label; Status="SKIP"; Reason=$reason }; Write-Host "  [SKIP] $label - $reason" -ForegroundColor Yellow }
 
 # ─── Docker ───────────────────────────────────────────────────────────────────
 Write-Step "Docker"
@@ -77,7 +77,7 @@ try {
     $output = & $PytestExe -v --tb=no -q 2>&1
     Pop-Location
     if ($LASTEXITCODE -eq 0) { Pass "Database-layer tests" }
-    else { Fail "Database-layer tests" "Exit code $LASTEXITCODE — PostgreSQL may be offline" }
+    else { Fail "Database-layer tests" "Exit code $LASTEXITCODE - PostgreSQL may be offline" }
 } catch {
     Pop-Location
     Fail "Database-layer tests" $_.Exception.Message
@@ -91,7 +91,7 @@ try {
     $output = & $PytestExe backend/tests/ -v --tb=no -q 2>&1
     Pop-Location
     if ($LASTEXITCODE -eq 0) { Pass "API-layer tests" }
-    else { Fail "API-layer tests" "Exit code $LASTEXITCODE — most tests require live PostgreSQL" }
+    else { Fail "API-layer tests" "Exit code $LASTEXITCODE - most tests require live PostgreSQL" }
 } catch {
     Pop-Location
     Fail "API-layer tests" $_.Exception.Message
@@ -149,7 +149,7 @@ $skipped = ($Results | Where-Object { $_.Status -eq "SKIP" }).Count
 foreach ($r in $Results) {
     $color = switch ($r.Status) { "PASS" { "Green" } "FAIL" { "Red" } "SKIP" { "Yellow" } }
     $line = "  [$($r.Status)] $($r.Label)"
-    if ($r.Reason) { $line += " — $($r.Reason)" }
+    if ($r.Reason) { $line += " - $($r.Reason)" }
     Write-Host $line -ForegroundColor $color
 }
 
@@ -157,7 +157,9 @@ Write-Host ""
 Write-Host "  Passed: $passed  Failed: $failed  Skipped: $skipped" -ForegroundColor White
 
 if ($failed -eq 0) {
-    Write-Host "`n  STRUCTURE CLEAN — READY FOR DEVELOPMENT" -ForegroundColor Green
+    Write-Host "`n  STRUCTURE CLEAN - READY FOR DEVELOPMENT" -ForegroundColor Green
+    exit 0
 } else {
-    Write-Host "`n  BLOCKED — $failed check(s) failed. See above." -ForegroundColor Red
+    Write-Host "`n  BLOCKED - $failed check(s) failed. See above." -ForegroundColor Red
+    exit 1
 }

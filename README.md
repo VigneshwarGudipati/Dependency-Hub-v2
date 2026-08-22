@@ -192,19 +192,25 @@ The frontend dev server starts on the port Vite assigns (default **3000** for Ta
 
 ---
 
-## Running Tests
+## Running Tests & Test Suite Organization
 
-### Database-layer tests (requires running PostgreSQL)
+Dependency Hub uses two distinct, independent test suites. They are deliberately separated to prevent module collection collisions (because both suites use identical file basenames like `test_artifacts.py`) and to isolate testing domains.
+
+### 1. Database-layer tests (requires running PostgreSQL)
+
+**Path:** `database/tests/`
+**Purpose:** Verifies SQLAlchemy models, constraints, relationships, and multi-tenancy rules using async sessions directly against PostgreSQL (with per-test transaction rollbacks).
 
 ```powershell
 cd database
 $env:PYTHONPATH="backend"
-.\.venv\Scripts\pytest.exe -v
+.\.venv\Scripts\pytest.exe -v tests
 ```
 
-These tests in `database/tests/` exercise SQLAlchemy models, constraints, relationships, and multi-tenancy using async sessions directly against PostgreSQL.
+### 2. API-layer tests (requires running PostgreSQL)
 
-### API-layer tests (requires running PostgreSQL)
+**Path:** `database/backend/tests/`
+**Purpose:** Verifies the full FastAPI application via `TestClient`. Tests auth, RBAC, CRUD endpoints, and tenant isolation at the API level.
 
 ```powershell
 cd database
@@ -212,7 +218,7 @@ $env:PYTHONPATH="backend"
 .\.venv\Scripts\pytest.exe backend/tests/ -v
 ```
 
-These tests in `database/backend/tests/` exercise the full FastAPI application via TestClient, testing auth, RBAC, CRUD endpoints, and tenant isolation. Most tests require a live database connection.
+> **Note:** Do not use `testpaths = tests backend/tests` in `pytest.ini` for global discovery, as it triggers `import file mismatch` errors due to duplicate module basenames. Always run the suites explicitly as shown above, or use the `verify.ps1` script to run both sequentially.
 
 ### Tests that pass without PostgreSQL
 

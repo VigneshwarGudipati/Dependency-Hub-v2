@@ -18,9 +18,9 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 
 function Write-Step { param($msg) Write-Host "`n[SETUP] $msg" -ForegroundColor Cyan }
-function Write-Ok   { param($msg) Write-Host "  ✓ $msg" -ForegroundColor Green }
-function Write-Warn { param($msg) Write-Host "  ⚠ $msg" -ForegroundColor Yellow }
-function Write-Fail { param($msg) Write-Host "  ✗ $msg" -ForegroundColor Red }
+function Write-Ok   { param($msg) Write-Host "  [OK] $msg" -ForegroundColor Green }
+function Write-Warn { param($msg) Write-Host "  [WARN] $msg" -ForegroundColor Yellow }
+function Write-Fail { param($msg) Write-Host "  [FAIL] $msg" -ForegroundColor Red }
 
 # ─── Prerequisites ────────────────────────────────────────────────────────────
 

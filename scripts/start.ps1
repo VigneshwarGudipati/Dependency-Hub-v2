@@ -21,8 +21,8 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 
 function Write-Step { param($msg) Write-Host "`n[START] $msg" -ForegroundColor Cyan }
-function Write-Ok   { param($msg) Write-Host "  ✓ $msg" -ForegroundColor Green }
-function Write-Warn { param($msg) Write-Host "  ⚠ $msg" -ForegroundColor Yellow }
+function Write-Ok   { param($msg) Write-Host "  [OK] $msg" -ForegroundColor Green }
+function Write-Warn { param($msg) Write-Host "  [WARN] $msg" -ForegroundColor Yellow }
 
 # ─── PostgreSQL ───────────────────────────────────────────────────────────────
 Write-Step "Starting PostgreSQL container"
