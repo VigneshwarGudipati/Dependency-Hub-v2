@@ -1,0 +1,40 @@
+# Dependency Hub — Git line ending normalization
+# Ensures consistent LF line endings in the repository across platforms.
+
+# Default: normalize all text files to LF on commit
+* text=auto eol=lf
+
+# Force LF for source files regardless of platform
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.jsx   text eol=lf
+*.mjs   text eol=lf
+*.json  text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.ini   text eol=lf
+*.py    text eol=lf
+*.sql   text eol=lf
+*.sh    text eol=lf
+*.env.example text eol=lf
+
+# PowerShell — keep CRLF on Windows checkout (scripts run natively)
+*.ps1   text eol=crlf
+
+# Binary files — do not attempt line ending conversion
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.pdf   binary
+*.zip   binary
