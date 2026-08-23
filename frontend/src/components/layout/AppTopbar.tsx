@@ -3,9 +3,11 @@ import { Bell, Menu, Moon, Plus, Search, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/hooks/useAuth";
 
 export function AppTopbar({ onOpenNav }: { onOpenNav: () => void }) {
   const { theme, toggle } = useTheme();
+  const { data: user } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
@@ -43,20 +45,28 @@ export function AppTopbar({ onOpenNav }: { onOpenNav: () => void }) {
           </button>
           <Link
             to="/audit-logs"
-            aria-label="Notifications"
+            aria-label="Notifications (Deferred)"
             className="relative grid size-9 place-items-center rounded-lg border border-border hover:bg-muted"
           >
             <Bell className="size-4" />
-            <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive" />
           </Link>
           <Link
             to="/settings"
             className="flex items-center gap-2 rounded-lg border border-border py-1 pl-1 pr-3 hover:bg-muted"
           >
             <span className="grid size-7 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-              PR
+              {user?.full_name
+                ? user.full_name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .substring(0, 2)
+                    .toUpperCase()
+                : (user?.username?.substring(0, 2).toUpperCase() ?? "U")}
             </span>
-            <span className="hidden text-sm font-medium sm:block">Priya</span>
+            <span className="hidden text-sm font-medium sm:block">
+              {user?.full_name ?? user?.username ?? "User"}
+            </span>
           </Link>
         </div>
       </div>

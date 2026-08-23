@@ -97,6 +97,20 @@ try {
     Fail "API-layer tests" $_.Exception.Message
 }
 
+# ─── Live OSV Integration test ────────────────────────────────────────────────
+Write-Step "Live OSV Integration test (database/tests/integration/test_e2e_osv.py)"
+try {
+    Push-Location (Join-Path $Root "database")
+    $env:PYTHONPATH = "backend"
+    $output = & $PytestExe tests/integration/test_e2e_osv.py -v --tb=no -q 2>&1
+    Pop-Location
+    if ($LASTEXITCODE -eq 0) { Pass "Live OSV Integration test" }
+    else { Fail "Live OSV Integration test" "Exit code $LASTEXITCODE - requires internet access" }
+} catch {
+    Pop-Location
+    Fail "Live OSV Integration test" $_.Exception.Message
+}
+
 # ─── Frontend build ───────────────────────────────────────────────────────────
 Write-Step "Frontend build"
 try {

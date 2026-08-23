@@ -48,18 +48,18 @@ def test_exception_handling():
     # Use raise_server_exceptions=False so the global_exception_handler
     # can intercept and convert the ValueError to a 500 JSON response.
     # This matches production behaviour where Starlette's error handler fires.
-    with TestClient(app, raise_server_exceptions=False) as exc_client:
-        @app.get("/test-error")
-        async def force_error():
-            raise ValueError("Simulated unexpected error")
+    exc_client = TestClient(app, raise_server_exceptions=False)
+    @app.get("/test-error")
+    async def force_error():
+        raise ValueError("Simulated unexpected error")
 
-        response = exc_client.get("/test-error")
-        assert response.status_code == 500
-        data = response.json()
-        assert "error" in data
-        assert data["error"]["code"] == "INTERNAL_SERVER_ERROR"
-        assert data["error"]["message"] == "An unexpected error occurred"
-        # NOTE: x-request-id is added by RequestIDMiddleware *after* call_next.
+    response = exc_client.get("/test-error")
+    assert response.status_code == 500
+    data = response.json()
+    assert "error" in data
+    assert data["error"]["code"] == "INTERNAL_SERVER_ERROR"
+    assert data["error"]["message"] == "An unexpected error occurred"
+    # NOTE: x-request-id is added by RequestIDMiddleware *after* call_next.
         # When BaseHTTPMiddleware propagates an unhandled exception the middleware
         # does not get a chance to annotate the error response headers.
         # This is a known Starlette BaseHTTPMiddleware limitation; the exception

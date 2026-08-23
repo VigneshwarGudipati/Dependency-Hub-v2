@@ -78,14 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "DepSentry — Software Dependency Health Dashboard" },
+      { title: "Dependency Hub — Software Dependency Health Dashboard" },
       {
         name: "description",
         content:
           "Enterprise dependency health platform: scan manifests, track CVEs and monitor package risk.",
       },
-      { name: "author", content: "DepSentry" },
-      { property: "og:title", content: "DepSentry — Dependency Health Dashboard" },
+      { name: "author", content: "Dependency Hub" },
+      { property: "og:title", content: "Dependency Hub — Dependency Health Dashboard" },
       {
         property: "og:description",
         content: "Scan dependencies, map transitive risk and remediate CVEs before production.",

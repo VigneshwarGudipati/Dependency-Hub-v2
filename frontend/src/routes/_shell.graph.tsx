@@ -13,12 +13,12 @@ import type { GraphNode } from "@/types";
 export const Route = createFileRoute("/_shell/graph")({
   head: () => ({
     meta: [
-      { title: "Dependency Graph — DepSentry" },
+      { title: "Dependency Graph — Dependency Hub" },
       {
         name: "description",
         content: "Interactive transitive dependency graph with zoom, pan and risk colour coding.",
       },
-      { property: "og:title", content: "Dependency Graph — DepSentry" },
+      { property: "og:title", content: "Dependency Graph — Dependency Hub" },
       { property: "og:description", content: "Explore transitive dependency risk visually." },
     ],
   }),

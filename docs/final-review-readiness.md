@@ -20,7 +20,7 @@ This document tracks the readiness of the Dependency Hub project for the final r
 - [x] **Login Screen**: No false SSO/2FA claims. Shows "Protected by industry standard JWT authentication and RBAC." — accurate.
 - [x] **Settings Screen**: No GitHub webhook claims. Scanning tab says "Trigger a full resolution whenever a new manifest is uploaded via API." — accurate.
 - [x] **Dashboard Activity**: Uses mock UI copy — acceptable as demo content for in-scope phase.
-- [x] **Vulnerability Sources**: Detail dialog shows "Fixture / Test Data" when source is "NVD" — honest representation.
+- [x] **Vulnerability Sources**: Detail dialog shows "OSV" when source is "OSV" — honest representation.
 
 ## 3. Verified End-to-End Workflows
 - [x] **Authentication**: Register, Login, Logout, JWT Refresh — **20 passing tests** (test_auth.py).
@@ -37,7 +37,7 @@ This document tracks the readiness of the Dependency Hub project for the final r
 - [ ] Audit Log API endpoint — table exists, no REST route yet
 - [ ] Report generation — mock page only, no backend generation
 - [ ] Health-over-time chart — uses mock trend data, no historical scan metrics
-- [ ] Live NVD/OSV advisory feed — 20% random fixture generator in place
+- [x] OSV-backed vulnerability intelligence in place
 - [ ] Scanner page (`/scanner`) — standalone UX demo using mockService; real scan flow is via `/repositories/:id` Upload Manifest
 
 ## 5. Test Suite Summary

@@ -3,8 +3,10 @@ import axios from "axios";
 /**
  * API-ready axios instance. Set VITE_API_BASE_URL to point at the FastAPI backend.
  */
+export const BASE_URL = import.meta.env["VITE_API_BASE_URL"] ?? "/api/v1";
+
 export const apiClient = axios.create({
-  baseURL: import.meta.env["VITE_API_BASE_URL"] ?? "/api",
+  baseURL: BASE_URL,
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });
@@ -127,7 +129,9 @@ export const API_ROUTES = {
   dashboard: "/dashboard/summary",
   repositories: "/projects",
   repository: (id: string) => `/projects/${id}`,
+  artifacts: (id: string) => `/projects/${id}/artifacts`,
   scan: (id: string) => `/projects/${id}/scans`,
+  scanStatus: (projectId: string, scanId: string) => `/projects/${projectId}/scans/${scanId}`,
   graph: (id: string) => `/projects/${id}/graph`,
   vulnerabilities: "/vulnerabilities",
   packages: "/dependencies",

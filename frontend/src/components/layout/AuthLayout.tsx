@@ -19,7 +19,7 @@ export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProp
           <span className="grid size-10 place-items-center rounded-xl bg-navy-foreground/15">
             <ShieldCheck className="size-5" />
           </span>
-          <span className="font-display text-lg font-bold">DepSentry</span>
+          <span className="font-display text-lg font-bold">Dependency Hub</span>
         </Link>
         <div className="relative max-w-md space-y-5">
           <h2 className="font-display text-4xl font-bold leading-tight">
@@ -57,7 +57,7 @@ export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProp
             <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
               <ShieldCheck className="size-5" />
             </span>
-            <span className="font-display text-base font-bold">DepSentry</span>
+            <span className="font-display text-base font-bold">Dependency Hub</span>
           </Link>
           <h1 className="text-2xl font-bold">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>

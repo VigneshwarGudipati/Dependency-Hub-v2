@@ -11,12 +11,12 @@ import { formatCompact, formatDate } from "@/utils/format";
 export const Route = createFileRoute("/_shell/packages/$packageId")({
   head: () => ({
     meta: [
-      { title: "Package details — DepSentry" },
+      { title: "Package details — Dependency Hub" },
       {
         name: "description",
         content: "Version drift, license, maintenance signals and advisories for a single package.",
       },
-      { property: "og:title", content: "Package details — DepSentry" },
+      { property: "og:title", content: "Package details — Dependency Hub" },
       {
         property: "og:description",
         content: "Version drift, license and advisories for a package.",

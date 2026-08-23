@@ -6,15 +6,15 @@ import { useEffect, useState } from "react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "DepSentry — Launching your dependency workspace" },
+      { title: "Dependency Hub — Launching your dependency workspace" },
       {
         name: "description",
-        content: "Initialising the DepSentry dependency health workspace and security feeds.",
+        content: "Initialising the Dependency Hub dependency health workspace and security feeds.",
       },
-      { property: "og:title", content: "DepSentry — Dependency Health Dashboard" },
+      { property: "og:title", content: "Dependency Hub — Dependency Health Dashboard" },
       {
         property: "og:description",
-        content: "Initialising the DepSentry dependency health workspace and security feeds.",
+        content: "Initialising the Dependency Hub dependency health workspace and security feeds.",
       },
     ],
   }),
@@ -67,7 +67,7 @@ function SplashScreen() {
         >
           <ShieldCheck className="size-10" />
         </motion.span>
-        <h1 className="mt-6 font-display text-3xl font-bold">DepSentry</h1>
+        <h1 className="mt-6 font-display text-3xl font-bold">Dependency Hub</h1>
         <p className="mt-2 text-sm text-navy-foreground/70">Software Dependency Health Dashboard</p>
 
         <div className="mt-10 h-1.5 w-full overflow-hidden rounded-full bg-navy-foreground/15">

@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/server-error")({
   head: () => ({
     meta: [
-      { title: "Server error (500) — DepSentry" },
-      { name: "description", content: "Something went wrong on the DepSentry platform." },
-      { property: "og:title", content: "Server error — DepSentry" },
-      { property: "og:description", content: "Something went wrong on the DepSentry platform." },
+      { title: "Server error (500) — Dependency Hub" },
+      { name: "description", content: "Something went wrong on the Dependency Hub platform." },
+      { property: "og:title", content: "Server error — Dependency Hub" },
+      {
+        property: "og:description",
+        content: "Something went wrong on the Dependency Hub platform.",
+      },
     ],
   }),
   component: ServerErrorPage,

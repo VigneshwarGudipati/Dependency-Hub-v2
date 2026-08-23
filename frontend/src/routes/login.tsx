@@ -12,9 +12,12 @@ import { apiClient, API_ROUTES, setTokens } from "@/services/apiClient";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Sign in — DepSentry" },
-      { name: "description", content: "Sign in to your DepSentry dependency health workspace." },
-      { property: "og:title", content: "Sign in — DepSentry" },
+      { title: "Sign in — Dependency Hub" },
+      {
+        name: "description",
+        content: "Sign in to your Dependency Hub dependency health workspace.",
+      },
+      { property: "og:title", content: "Sign in — Dependency Hub" },
       { property: "og:description", content: "Access your dependency health workspace." },
     ],
   }),
@@ -40,7 +43,7 @@ function LoginPage() {
     try {
       const resp = await apiClient.post(API_ROUTES.login, { email, password });
       setTokens(resp.data.access_token, resp.data.refresh_token);
-      toast.success("Signed in", { description: "Welcome back to DepSentry." });
+      toast.success("Signed in", { description: "Welcome back to Dependency Hub." });
       navigate({ to: "/dashboard" });
     } catch (error: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,7 +60,7 @@ function LoginPage() {
 
   return (
     <AuthLayout
-      title="Sign in to DepSentry"
+      title="Sign in to Dependency Hub"
       subtitle="Use your work account to access the dependency health workspace."
       footer={
         <span>

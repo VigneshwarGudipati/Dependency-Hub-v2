@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SearchInput } from "@/components/common/SearchInput";
 import { EmptyState, ErrorState, TableSkeleton } from "@/components/common/States";
 import { Button } from "@/components/ui/button";
-import { useMockData } from "@/hooks/useMockData";
 import { API_ROUTES, apiClient } from "@/services/apiClient";
 import { timeAgo } from "@/utils/format";
 import { toast } from "sonner";
@@ -13,12 +13,12 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_shell/users")({
   head: () => ({
     meta: [
-      { title: "User Management — DepSentry" },
+      { title: "User Management — Dependency Hub" },
       {
         name: "description",
-        content: "Manage teammates, roles and access to the DepSentry workspace.",
+        content: "Manage teammates, roles and access to the Dependency Hub workspace.",
       },
-      { property: "og:title", content: "User Management — DepSentry" },
+      { property: "og:title", content: "User Management — Dependency Hub" },
       { property: "og:description", content: "Manage teammates, roles and workspace access." },
     ],
   }),
@@ -26,9 +26,17 @@ export const Route = createFileRoute("/_shell/users")({
 });
 
 function UsersPage() {
-  const { data, loading, error, reload } = useMockData(async () => {
-    const res = await apiClient.get(API_ROUTES.users);
-    return res.data;
+  const {
+    data,
+    isLoading: loading,
+    error,
+    refetch: reload,
+  } = useQuery({
+    queryKey: ["users"],
+    queryFn: async () => {
+      const res = await apiClient.get(API_ROUTES.users);
+      return res.data;
+    },
   });
   const [query, setQuery] = useState("");
 
@@ -59,7 +67,12 @@ function UsersPage() {
         <SearchInput value={query} onChange={setQuery} placeholder="Search people…" />
       </div>
 
-      {error ? <ErrorState message={error} onRetry={reload} /> : null}
+      {error ? (
+        <ErrorState
+          message={error instanceof Error ? error.message : String(error)}
+          onRetry={() => reload()}
+        />
+      ) : null}
       {loading ? <TableSkeleton /> : null}
 
       {!loading && !error ? (

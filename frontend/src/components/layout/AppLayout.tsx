@@ -17,7 +17,7 @@ export function AppLayout() {
           </div>
         </main>
         <footer className="border-t border-border px-6 py-4 text-xs text-muted-foreground">
-          DepSentry · Dependency Health Dashboard
+          Dependency Hub · Dependency Health Dashboard
         </footer>
       </div>
     </div>

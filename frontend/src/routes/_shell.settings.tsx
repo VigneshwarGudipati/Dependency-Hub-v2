@@ -13,12 +13,12 @@ import { Loader2 } from "lucide-react";
 export const Route = createFileRoute("/_shell/settings")({
   head: () => ({
     meta: [
-      { title: "Settings — DepSentry" },
+      { title: "Settings — Dependency Hub" },
       {
         name: "description",
         content: "Profile, notification, scanning and integration preferences.",
       },
-      { property: "og:title", content: "Settings — DepSentry" },
+      { property: "og:title", content: "Settings — Dependency Hub" },
       { property: "og:description", content: "Profile, notification and scanning preferences." },
     ],
   }),
@@ -50,7 +50,7 @@ function SettingsPage() {
       <PageHeader
         eyebrow="Administration"
         title="Settings"
-        description="Tune how DepSentry scans, alerts and integrates with your toolchain."
+        description="Tune how Dependency Hub scans, alerts and integrates with your toolchain."
       />
 
       <Tabs defaultValue="profile" className="surface-card p-5">
@@ -93,10 +93,13 @@ function SettingsPage() {
               className="flex items-start justify-between gap-4 rounded-xl border border-border p-4"
             >
               <span>
-                <span className="block text-sm font-medium">{title}</span>
+                <span className="block text-sm font-medium">
+                  {title}{" "}
+                  <span className="text-muted-foreground text-xs font-normal ml-2">(Deferred)</span>
+                </span>
                 <span className="block text-sm text-muted-foreground">{body}</span>
               </span>
-              <Switch defaultChecked={index !== 2} />
+              <Switch defaultChecked={index !== 2} disabled />
             </label>
           ))}
         </TabsContent>
@@ -118,10 +121,13 @@ function SettingsPage() {
               className="flex items-start justify-between gap-4 rounded-xl border border-border p-4"
             >
               <span>
-                <span className="block text-sm font-medium">{title}</span>
+                <span className="block text-sm font-medium">
+                  {title}{" "}
+                  <span className="text-muted-foreground text-xs font-normal ml-2">(Deferred)</span>
+                </span>
                 <span className="block text-sm text-muted-foreground">{body}</span>
               </span>
-              <Switch defaultChecked={index === 0} />
+              <Switch defaultChecked={index === 0} disabled />
             </label>
           ))}
         </TabsContent>

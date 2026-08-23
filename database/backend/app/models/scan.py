@@ -38,6 +38,7 @@ class ScanStatus(str, enum.Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
+    PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"
 
 
 class Scan(Base, PrimaryKeyMixin, TimestampMixin):
@@ -68,7 +69,7 @@ class Scan(Base, PrimaryKeyMixin, TimestampMixin):
         nullable=False,
     )
     status: Mapped[ScanStatus] = mapped_column(
-        Enum(ScanStatus, name="scan_status_enum", native_enum=False),
+        Enum(ScanStatus, name="scan_status_enum", native_enum=False, length=50),
         default=ScanStatus.QUEUED,
         nullable=False,
         index=True,

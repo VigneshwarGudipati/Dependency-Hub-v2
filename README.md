@@ -218,6 +218,17 @@ $env:PYTHONPATH="backend"
 .\.venv\Scripts\pytest.exe backend/tests/ -v
 ```
 
+### 3. Live OSV Integration Test (requires internet access)
+
+**Path:** `database/tests/integration/`
+**Purpose:** Verifies real vulnerability intelligence fetching from the live OSV API. This is isolated from the normal test suites to ensure deterministic offline builds.
+
+```powershell
+cd database
+$env:PYTHONPATH="backend"
+.\.venv\Scripts\pytest.exe -v tests/integration/test_e2e_osv.py
+```
+
 > **Note:** Do not use `testpaths = tests backend/tests` in `pytest.ini` for global discovery, as it triggers `import file mismatch` errors due to duplicate module basenames. Always run the suites explicitly as shown above, or use the `verify.ps1` script to run both sequentially.
 
 ### Tests that pass without PostgreSQL
@@ -272,7 +283,7 @@ SELECT version_num FROM alembic_version; -- Expected: b1ae584b89a0
 
 ## Known Limitations
 
-- **Scanner uses fixture data** — The scanner simulates analysis using pre-loaded fixture vulnerability data. It does not connect to OSV, NVD, or any live advisory database.
+- **Scanner uses OSV data** - The scanner uses real OSV-backed vulnerability intelligence to analyze your dependencies.
 - **Outdated detection is not implemented** — Latest version comparison requires npm/PyPI registry integration (future scope).
 - **Transitive dependency resolution is not implemented** — Only direct manifest dependencies are parsed.
 - **GitHub integration is not implemented** — Repository sync requires a GitHub App (future scope).

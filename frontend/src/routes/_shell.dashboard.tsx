@@ -23,13 +23,13 @@ import { downloadFile, formatCompact, timeAgo, toCsv } from "@/utils/format";
 export const Route = createFileRoute("/_shell/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — DepSentry Dependency Health" },
+      { title: "Dashboard — Dependency Hub Dependency Health" },
       {
         name: "description",
         content:
           "Portfolio-wide dependency health score, vulnerability breakdown and scan activity.",
       },
-      { property: "og:title", content: "Dashboard — DepSentry" },
+      { property: "og:title", content: "Dashboard — Dependency Hub" },
       {
         property: "og:description",
         content: "Portfolio-wide dependency health score and vulnerability breakdown.",
@@ -65,7 +65,7 @@ function DashboardPage() {
               onClick={() =>
                 data &&
                 downloadFile(
-                  "depsentry-summary.csv",
+                  "Dependency Hub-summary.csv",
                   toCsv(data.severityBreakdown.map((p) => ({ severity: p.label, count: p.value }))),
                   "text/csv",
                 )
@@ -225,7 +225,7 @@ function DashboardPage() {
               <div>
                 <h2 className="text-sm font-semibold">Monitor another repository</h2>
                 <p className="text-sm text-muted-foreground">
-                  Connect a repo and DepSentry scans every push automatically.
+                  Connect a repo and Dependency Hub scans every push automatically.
                 </p>
               </div>
             </div>

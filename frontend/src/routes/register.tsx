@@ -13,12 +13,13 @@ import { apiClient, API_ROUTES, setTokens } from "@/services/apiClient";
 export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
-      { title: "Create your DepSentry account" },
+      { title: "Create your Dependency Hub account" },
       {
         name: "description",
-        content: "Create a DepSentry account to start scanning dependencies for vulnerabilities.",
+        content:
+          "Create a Dependency Hub account to start scanning dependencies for vulnerabilities.",
       },
-      { property: "og:title", content: "Create your DepSentry account" },
+      { property: "og:title", content: "Create your Dependency Hub account" },
       { property: "og:description", content: "Start scanning dependencies for vulnerabilities." },
     ],
   }),
@@ -65,7 +66,7 @@ function RegisterPage() {
         password: form.password,
       });
       setTokens(resp.data.access_token, resp.data.refresh_token);
-      toast.success("Account created", { description: "Welcome to DepSentry." });
+      toast.success("Account created", { description: "Welcome to Dependency Hub." });
       navigate({ to: "/dashboard" });
     } catch (error: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

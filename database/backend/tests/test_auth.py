@@ -159,7 +159,7 @@ def test_jwt_invalid_signature(client):
     token = jwt.encode(
         {"sub": str(uuid.uuid4()), "type": "access", "iat": datetime.now(timezone.utc),
          "exp": datetime.now(timezone.utc) + timedelta(hours=1)},
-        "wrong-secret", algorithm="HS256",
+        "wrong-secret-must-be-at-least-32-bytes", algorithm="HS256",
     )
     resp = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 401

@@ -19,13 +19,13 @@ import { API_ROUTES, apiClient } from "@/services/apiClient";
 export const Route = createFileRoute("/_shell/repositories/new")({
   head: () => ({
     meta: [
-      { title: "Connect a repository — DepSentry" },
+      { title: "Connect a repository — Dependency Hub" },
       {
         name: "description",
         content:
-          "Connect a repository so DepSentry can scan its dependency manifest on every push.",
+          "Connect a repository so Dependency Hub can scan its dependency manifest on every push.",
       },
-      { property: "og:title", content: "Connect a repository — DepSentry" },
+      { property: "og:title", content: "Connect a repository — Dependency Hub" },
       { property: "og:description", content: "Scan a new repository's dependency manifest." },
     ],
   }),
@@ -96,7 +96,7 @@ function CreateRepositoryPage() {
       <PageHeader
         eyebrow="Repositories"
         title="Connect a repository"
-        description="DepSentry parses the manifest, resolves the tree and scores health after every push."
+        description="Dependency Hub parses the manifest, resolves the tree and scores health after every push."
       />
 
       <form onSubmit={handleSubmit} className="grid gap-4 lg:grid-cols-3">

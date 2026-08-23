@@ -20,12 +20,12 @@ import { formatNumber, timeAgo } from "@/utils/format";
 export const Route = createFileRoute("/_shell/repositories/")({
   head: () => ({
     meta: [
-      { title: "Repositories — DepSentry" },
+      { title: "Repositories — Dependency Hub" },
       {
         name: "description",
         content: "Browse every monitored repository with health score, findings and last scan.",
       },
-      { property: "og:title", content: "Repositories — DepSentry" },
+      { property: "og:title", content: "Repositories — Dependency Hub" },
       {
         property: "og:description",
         content: "Every monitored repository with health score, findings and last scan.",

@@ -8,7 +8,8 @@ export function formatCompact(value: number): string {
   );
 }
 
-export function formatDate(iso: string): string {
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso || iso === "0" || new Date(iso).getTime() === 0) return "Never scanned";
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -16,7 +17,8 @@ export function formatDate(iso: string): string {
   });
 }
 
-export function formatDateTime(iso: string): string {
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso || iso === "0" || new Date(iso).getTime() === 0) return "Never";
   return new Date(iso).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -25,7 +27,8 @@ export function formatDateTime(iso: string): string {
   });
 }
 
-export function timeAgo(iso: string): string {
+export function timeAgo(iso: string | null | undefined): string {
+  if (!iso || iso === "0" || new Date(iso).getTime() === 0) return "Never scanned";
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.round(diff / 60000);
   if (minutes < 1) return "just now";

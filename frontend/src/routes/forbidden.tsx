@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/forbidden")({
   head: () => ({
     meta: [
-      { title: "Access denied (403) — DepSentry" },
+      { title: "Access denied (403) — Dependency Hub" },
       {
         name: "description",
-        content: "You don't have permission to view this DepSentry resource.",
+        content: "You don't have permission to view this Dependency Hub resource.",
       },
-      { property: "og:title", content: "Access denied — DepSentry" },
+      { property: "og:title", content: "Access denied — Dependency Hub" },
       { property: "og:description", content: "You don't have permission to view this resource." },
     ],
   }),

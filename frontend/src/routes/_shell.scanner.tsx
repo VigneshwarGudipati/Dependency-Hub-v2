@@ -1,10 +1,10 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, Loader2, Play, RotateCcw, Upload } from "lucide-react";
+import { CheckCircle2, Loader2, Play, RotateCcw, Upload, FileBarChart } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { StatusBadge } from "@/components/common/Badges";
 import { PageHeader } from "@/components/common/PageHeader";
+import { EmptyState } from "@/components/common/States";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -14,60 +14,125 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { repositories, samplePackageJson, scanSteps } from "@/data/mockData";
-import { mockService } from "@/services/mockService";
+import { API_ROUTES, apiClient } from "@/services/apiClient";
 import { cn } from "@/lib/utils";
-import type { ScanResult } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import type { Repository } from "@/types";
 
 export const Route = createFileRoute("/_shell/scanner")({
   head: () => ({
     meta: [
-      { title: "Dependency Scanner — DepSentry" },
+      { title: "Dependency Scanner — Dependency Hub" },
       {
         name: "description",
         content: "Paste or upload a manifest and scan it for outdated and vulnerable packages.",
-      },
-      { property: "og:title", content: "Dependency Scanner — DepSentry" },
-      {
-        property: "og:description",
-        content: "Scan a manifest for outdated and vulnerable packages.",
       },
     ],
   }),
   component: ScannerPage,
 });
 
+const samplePackageJson = `{
+  "name": "example-project",
+  "version": "1.0.0",
+  "dependencies": {
+    "react": "^18.2.0"
+  }
+}`;
+
+const scanSteps = [
+  { id: "read", label: "Uploading artifact", detail: "Sending manifest to API" },
+  { id: "queue", label: "Queueing scan", detail: "Creating full dependency scan" },
+  { id: "process", label: "Processing", detail: "Waiting for backend resolution" },
+];
+
 function ScannerPage() {
   const [manifest, setManifest] = useState(samplePackageJson);
-  const [repository, setRepository] = useState(repositories[0]?.name ?? "payments-api");
+  const [repositoryId, setRepositoryId] = useState("");
   const [running, setRunning] = useState(false);
   const [stepIndex, setStepIndex] = useState(-1);
-  const [result, setResult] = useState<ScanResult | null>(null);
+  const [result, setResult] = useState<{ vulnerable: number; total: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const { data: repositories } = useQuery<Repository[]>({
+    queryKey: ["repositories"],
+    queryFn: async () => {
+      const res = await apiClient.get(API_ROUTES.repositories);
+      return res.data;
+    },
+  });
+
   useEffect(() => {
-    if (!running) return undefined;
-    if (stepIndex >= scanSteps.length) return undefined;
-    const timer = window.setTimeout(() => setStepIndex((prev) => prev + 1), 700);
-    return () => window.clearTimeout(timer);
-  }, [running, stepIndex]);
+    if (repositories?.length && !repositoryId) {
+      setRepositoryId(repositories[0].id);
+    }
+  }, [repositories, repositoryId]);
 
   const startScan = async () => {
     if (manifest.trim().length < 10) {
       toast.error("Add a manifest before scanning.");
       return;
     }
+    if (!repositoryId) {
+      toast.error("Select a repository first.");
+      return;
+    }
+
     setResult(null);
     setRunning(true);
     setStepIndex(0);
-    const scan = await mockService.runScan(repository);
-    window.setTimeout(() => {
-      setResult(scan);
-      setRunning(false);
-      toast.success("Scan complete", {
-        description: `${scan.vulnerable} vulnerable of ${scan.total} packages.`,
+
+    try {
+      // Step 1: Upload artifact
+      const blob = new Blob([manifest], { type: "application/json" });
+      const file = new File([blob], "package.json", { type: "application/json" });
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const artifactRes = await apiClient.post(API_ROUTES.artifacts(repositoryId), formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-    }, scanSteps.length * 700);
+      const artifactId = artifactRes.data.id;
+      setStepIndex(1);
+
+      // Step 2: Create Scan
+      const scanRes = await apiClient.post(API_ROUTES.scan(repositoryId), {
+        artifact_id: artifactId,
+        scan_type: "FULL",
+      });
+      const scanId = scanRes.data.id;
+      setStepIndex(2);
+
+      // Step 3: Poll
+      let completed = false;
+      let finalScan: Record<string, unknown> | null = null;
+      while (!completed) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const statusRes = await apiClient.get(API_ROUTES.scanStatus(repositoryId, scanId));
+        if (statusRes.data.status === "COMPLETED" || statusRes.data.status === "FAILED") {
+          completed = true;
+          finalScan = statusRes.data;
+        }
+      }
+
+      if (finalScan?.status === "FAILED") {
+        throw new Error(String(finalScan.error_message) || "Scan failed.");
+      }
+
+      setStepIndex(3);
+      setResult({
+        total: Number(finalScan?.total_dependencies || 0),
+        vulnerable: Number(finalScan?.vulnerable_dependencies || 0),
+      });
+      toast.success("Scan complete", {
+        description: `${finalScan?.vulnerable_dependencies} vulnerable of ${finalScan?.total_dependencies} packages.`,
+      });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      toast.error("Scan error", { description: errorMsg || "Failed to complete scan." });
+    } finally {
+      setRunning(false);
+    }
   };
 
   const handleFile = (file: File | undefined) => {
@@ -132,19 +197,16 @@ function ScannerPage() {
               aria-label="Dependency manifest"
               className="font-mono text-xs"
             />
-            <p className="mt-2 text-xs text-muted-foreground">
-              Drag and drop package.json, requirements.txt or go.mod anywhere in this box.
-            </p>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Select value={repository} onValueChange={setRepository}>
+            <Select value={repositoryId} onValueChange={setRepositoryId}>
               <SelectTrigger className="w-56">
                 <SelectValue placeholder="Repository" />
               </SelectTrigger>
               <SelectContent>
-                {repositories.map((repo) => (
-                  <SelectItem key={repo.id} value={repo.name}>
+                {repositories?.map((repo) => (
+                  <SelectItem key={repo.id} value={repo.id}>
                     {repo.name}
                   </SelectItem>
                 ))}
@@ -200,13 +262,11 @@ function ScannerPage() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="space-y-4"
+            className="space-y-4 mt-4"
           >
-            <div className="grid gap-4 sm:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               {[
-                ["Health score", result.healthScore, "text-primary"],
-                ["Safe", result.safe, "text-success"],
-                ["Outdated", result.outdated, "text-warning"],
+                ["Total packages", result.total, "text-primary"],
                 ["Vulnerable", result.vulnerable, "text-destructive"],
               ].map(([label, value, tone]) => (
                 <div key={String(label)} className="surface-card p-5">
@@ -220,59 +280,15 @@ function ScannerPage() {
 
             <div className="surface-card p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-base font-semibold">Resolved packages</h2>
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/graph">View dependency graph</Link>
-                </Button>
+                <h2 className="text-base font-semibold">Resolved packages (Deferred)</h2>
               </div>
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[640px] text-sm">
-                  <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <tr>
-                      <th className="py-2">Package</th>
-                      <th className="py-2">Installed</th>
-                      <th className="py-2">Latest</th>
-                      <th className="py-2">Advisory</th>
-                      <th className="py-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {result.packages.map((pkg) => (
-                      <tr key={pkg.id} className="hover:bg-muted/50">
-                        <td className="py-2.5 font-medium">
-                          <Link
-                            to="/packages/$packageId"
-                            params={{ packageId: pkg.id }}
-                            className="hover:text-primary"
-                          >
-                            {pkg.name}
-                          </Link>
-                        </td>
-                        <td className="py-2.5 font-mono text-xs">{pkg.installedVersion}</td>
-                        <td className="py-2.5 font-mono text-xs">{pkg.latestVersion}</td>
-                        <td className="py-2.5 font-mono text-xs text-muted-foreground">
-                          {pkg.cve ?? "—"}
-                        </td>
-                        <td className="py-2.5">
-                          <StatusBadge status={pkg.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-4">
+                <EmptyState
+                  icon={FileBarChart}
+                  title="Package details deferred to P1 phase."
+                  description="The backend does not yet resolve individual packages and vulnerabilities. View the backend system design for P1."
+                />
               </div>
-            </div>
-
-            <div className="surface-card p-5">
-              <h2 className="text-base font-semibold">Recommended actions</h2>
-              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                {result.recommendations.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
             </div>
           </motion.section>
         ) : null}

@@ -18,7 +18,7 @@ export function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
           <ShieldCheck className="size-5" />
         </span>
         <div className="min-w-0">
-          <p className="truncate font-display text-sm font-bold">DepSentry</p>
+          <p className="truncate font-display text-sm font-bold">Dependency Hub</p>
           <p className="truncate text-xs text-sidebar-foreground/60">Dependency Health</p>
         </div>
         <button

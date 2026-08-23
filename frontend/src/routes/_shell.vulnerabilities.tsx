@@ -38,12 +38,12 @@ import type { Severity, Vulnerability } from "@/types";
 export const Route = createFileRoute("/_shell/vulnerabilities")({
   head: () => ({
     meta: [
-      { title: "Vulnerabilities — DepSentry" },
+      { title: "Vulnerabilities — Dependency Hub" },
       {
         name: "description",
         content: "Severity-ranked CVE findings with CVSS scores and patched-version guidance.",
       },
-      { property: "og:title", content: "Vulnerabilities — DepSentry" },
+      { property: "og:title", content: "Vulnerabilities — Dependency Hub" },
       {
         property: "og:description",
         content: "Severity-ranked CVE findings across your portfolio.",
@@ -86,7 +86,7 @@ function VulnerabilitiesPage() {
   };
 
   const errorMessage = error instanceof Error ? error.message : "Failed to load vulnerabilities.";
-  const list = data?.items ?? [];
+  const list = useMemo(() => data?.items ?? [], [data?.items]);
   const counts = useMemo(() => {
     const base: Record<Severity, number> = { critical: 0, high: 0, medium: 0, low: 0 };
     list.forEach((item) => {
@@ -109,7 +109,7 @@ function VulnerabilitiesPage() {
             variant="outline"
             onClick={() =>
               downloadFile(
-                "depsentry-vulnerabilities.csv",
+                "Dependency Hub-vulnerabilities.csv",
                 toCsv(
                   list.map((item) => ({
                     cve: item.cve,

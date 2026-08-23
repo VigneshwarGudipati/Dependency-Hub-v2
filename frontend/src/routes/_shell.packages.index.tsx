@@ -27,12 +27,12 @@ import { formatCompact } from "@/utils/format";
 export const Route = createFileRoute("/_shell/packages/")({
   head: () => ({
     meta: [
-      { title: "Packages — DepSentry" },
+      { title: "Packages — Dependency Hub" },
       {
         name: "description",
         content: "Inventory of every direct and transitive package with health and license data.",
       },
-      { property: "og:title", content: "Packages — DepSentry" },
+      { property: "og:title", content: "Packages — Dependency Hub" },
       {
         property: "og:description",
         content: "Every direct and transitive package in one inventory.",

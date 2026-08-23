@@ -11,13 +11,13 @@ import { formatCompact } from "@/utils/format";
 export const Route = createFileRoute("/_shell/health-analysis")({
   head: () => ({
     meta: [
-      { title: "Dependency Health Analysis — DepSentry" },
+      { title: "Dependency Health Analysis — Dependency Hub" },
       {
         name: "description",
         content:
           "Composite health scoring, freshness and maintenance signals across the portfolio.",
       },
-      { property: "og:title", content: "Dependency Health Analysis — DepSentry" },
+      { property: "og:title", content: "Dependency Health Analysis — Dependency Hub" },
       { property: "og:description", content: "Composite health scoring across your portfolio." },
     ],
   }),

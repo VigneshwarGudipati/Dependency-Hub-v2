@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/password-reset-success")({
   head: () => ({
     meta: [
-      { title: "Password reset complete — DepSentry" },
-      { name: "description", content: "Your DepSentry password was reset successfully." },
-      { property: "og:title", content: "Password reset complete — DepSentry" },
+      { title: "Password reset complete — Dependency Hub" },
+      { name: "description", content: "Your Dependency Hub password was reset successfully." },
+      { property: "og:title", content: "Password reset complete — Dependency Hub" },
       { property: "og:description", content: "Your password was reset successfully." },
     ],
   }),
@@ -20,7 +20,7 @@ function ResetSuccessPage() {
   return (
     <AuthLayout
       title="You're all set"
-      subtitle="Your password has been updated across every DepSentry session."
+      subtitle="Your password has been updated across every Dependency Hub session."
     >
       <div className="space-y-6 text-center">
         <motion.span

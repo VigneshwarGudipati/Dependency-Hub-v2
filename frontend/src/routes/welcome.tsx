@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/welcome")({
   head: () => ({
     meta: [
-      { title: "Welcome to DepSentry — Dependency Risk Control" },
+      { title: "Welcome to Dependency Hub — Dependency Risk Control" },
       {
         name: "description",
         content:
-          "See how DepSentry scans manifests, scores dependency health and prioritises CVE remediation.",
+          "See how Dependency Hub scans manifests, scores dependency health and prioritises CVE remediation.",
       },
-      { property: "og:title", content: "Welcome to DepSentry" },
+      { property: "og:title", content: "Welcome to Dependency Hub" },
       {
         property: "og:description",
         content: "Scan manifests, score dependency health and prioritise CVE remediation.",
@@ -53,7 +53,7 @@ function WelcomeScreen() {
           <span className="grid size-9 place-items-center rounded-xl brand-gradient text-navy-foreground">
             <ShieldCheck className="size-5" />
           </span>
-          <span className="font-display text-base font-bold">DepSentry</span>
+          <span className="font-display text-base font-bold">Dependency Hub</span>
         </div>
         <Button asChild variant="ghost" size="sm">
           <Link to="/login">Sign in</Link>
@@ -76,8 +76,8 @@ function WelcomeScreen() {
               Know the health of every dependency you ship.
             </h1>
             <p className="mt-5 max-w-xl text-base text-muted-foreground">
-              DepSentry continuously scores your open-source footprint, surfaces exploitable CVEs
-              and gives engineering leaders a defensible remediation plan.
+              Dependency Hub continuously scores your open-source footprint, surfaces exploitable
+              CVEs and gives engineering leaders a defensible remediation plan.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">

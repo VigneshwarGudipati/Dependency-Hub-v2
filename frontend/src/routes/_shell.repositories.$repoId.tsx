@@ -7,10 +7,8 @@ import { SeverityBadge, StatusBadge } from "@/components/common/Badges";
 import { HealthRing } from "@/components/common/HealthRing";
 import { PageHeader } from "@/components/common/PageHeader";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/common/States";
-import { TrendAreaChart } from "@/components/charts/Charts";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { dashboardSummary } from "@/data/mockData";
 import { useDependencies } from "@/hooks/useDependencies";
 import { useProject } from "@/hooks/useProject";
 import { useVulnerabilities } from "@/hooks/useVulnerabilities";
@@ -20,12 +18,12 @@ import { downloadFile, formatDate, formatNumber, timeAgo, toCsv } from "@/utils/
 export const Route = createFileRoute("/_shell/repositories/$repoId")({
   head: () => ({
     meta: [
-      { title: "Repository details — DepSentry" },
+      { title: "Repository details — Dependency Hub" },
       {
         name: "description",
         content: "Dependency inventory, vulnerabilities and scan history for a single repository.",
       },
-      { property: "og:title", content: "Repository details — DepSentry" },
+      { property: "og:title", content: "Repository details — Dependency Hub" },
       {
         property: "og:description",
         content: "Dependency inventory, vulnerabilities and scan history.",
@@ -200,14 +198,9 @@ function RepositoryDetailsPage() {
           </dl>
         </div>
 
-        <div className="surface-card p-5">
-          <h2 className="text-base font-semibold">Health over time</h2>
-          <p className="text-sm text-muted-foreground">
-            Score and open findings recorded on each scheduled scan.
-          </p>
-          <div className="mt-4">
-            <TrendAreaChart data={dashboardSummary.trend} height={280} />
-          </div>
+        <div className="surface-card p-5 flex flex-col items-center justify-center text-center">
+          <h2 className="text-base font-semibold mb-2">Health over time</h2>
+          <p className="text-sm text-muted-foreground italic">Historical trend: Deferred</p>
         </div>
       </div>
 
@@ -274,26 +267,13 @@ function RepositoryDetailsPage() {
         </TabsContent>
 
         <TabsContent value="history" className="mt-4">
-          <ul className="space-y-3">
-            {dashboardSummary.trend
-              .slice(-6)
-              .reverse()
-              .map((point, index) => (
-                <li
-                  key={point.label}
-                  className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <GitBranch className="size-4 text-muted-foreground" />
-                    Scheduled scan · {point.label}
-                  </span>
-                  <span className="text-muted-foreground">
-                    Score {point.value} · {point.secondary ?? 0} findings
-                    {index === 0 ? " · latest" : ""}
-                  </span>
-                </li>
-              ))}
-          </ul>
+          <div className="p-8 text-center border rounded-xl border-dashed">
+            <GitBranch className="size-8 mx-auto text-muted-foreground mb-3" />
+            <p className="text-sm font-medium">Historical trend: Deferred</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Scan history feature is currently unavailable.
+            </p>
+          </div>
         </TabsContent>
       </Tabs>
     </>

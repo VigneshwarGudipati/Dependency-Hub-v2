@@ -9,12 +9,12 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 export const Route = createFileRoute("/verify-otp")({
   head: () => ({
     meta: [
-      { title: "Verify your identity — DepSentry" },
+      { title: "Verify your identity — Dependency Hub" },
       {
         name: "description",
-        content: "Enter the 6-digit code we sent to verify your DepSentry account.",
+        content: "Enter the 6-digit code we sent to verify your Dependency Hub account.",
       },
-      { property: "og:title", content: "Verify your identity — DepSentry" },
+      { property: "og:title", content: "Verify your identity — Dependency Hub" },
       { property: "og:description", content: "Enter the 6-digit verification code." },
     ],
   }),
