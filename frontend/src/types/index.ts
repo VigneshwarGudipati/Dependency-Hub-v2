@@ -48,11 +48,15 @@ export interface DependencyPackage {
   id: string;
   name: string;
   installedVersion: string;
-  latestVersion: string;
+  latestVersion: string | null;
   status: PackageStatus;
   severity: Severity | null;
   cve: string | null;
   license: string;
+  outdated: "TRUE" | "FALSE" | "UNKNOWN" | null;
+  publishedAt: string | null;
+  registrySource: string | null;
+  registryStatus: string | null;
   weeklyDownloads: number;
   maintainers: number;
   lastPublished: string;

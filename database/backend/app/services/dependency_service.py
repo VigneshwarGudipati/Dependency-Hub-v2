@@ -18,10 +18,10 @@ async def get_latest_scans_for_org(db: AsyncSession, organization_id: uuid.UUID,
     if project_id:
         proj_stmt = proj_stmt.where(Project.id == project_id)
     project_ids = (await db.execute(proj_stmt)).scalars().all()
-    
+
     if not project_ids:
         return []
-        
+
     scan_stmt = (
         select(Scan.project_id, Scan.id)
         .where(Scan.project_id.in_(project_ids), Scan.status == ScanStatus.COMPLETED)
@@ -45,11 +45,11 @@ async def list_dependencies(
     status: Optional[str] = None, # "safe", "outdated", "vulnerable", "all"
     project_id: Optional[uuid.UUID] = None
 ) -> PaginatedResponse[DependencyPackage]:
-    
+
     latest_scan_ids = await get_latest_scans_for_org(db, organization_id, project_id)
     if not latest_scan_ids:
         return PaginatedResponse(items=[], page=page, page_size=page_size, total=0, total_pages=0)
-        
+
     stmt = (
         select(Dependency)
         .options(
@@ -58,10 +58,10 @@ async def list_dependencies(
         )
         .where(Dependency.scan_id.in_(latest_scan_ids))
     )
-    
+
     if query:
         stmt = stmt.where(Dependency.package_name.ilike(f"%{query}%"))
-        
+
     # We load all matching to handle the "status" filter which might depend on vulnerabilities.
     # To do it in SQL:
     if status == "vulnerable":
@@ -71,25 +71,25 @@ async def list_dependencies(
     elif status == "outdated":
         # Outdated is DEFERRED, so we return empty if they ask for outdated and we can't compute it.
         stmt = stmt.where(Dependency.id == uuid.uuid4()) # dummy false condition
-        
+
     # Order by package name
     stmt = stmt.order_by(Dependency.package_name)
-    
+
     # Pagination counts
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await db.execute(count_stmt)).scalar() or 0
     total_pages = math.ceil(total / page_size) if total > 0 else 0
-    
+
     # Apply limit/offset
     stmt = stmt.limit(page_size).offset((page - 1) * page_size)
     dependencies = (await db.execute(stmt)).scalars().all()
-    
+
     items = []
     for dep in dependencies:
         vulns = dep.vulnerabilities
         is_vuln = len(vulns) > 0
         computed_status = "vulnerable" if is_vuln else "safe"
-        
+
         # Take the highest severity
         severity = None
         cve = None
@@ -99,15 +99,21 @@ async def list_dependencies(
             severity = sorted_vulns[0].vulnerability.severity.name.lower()
             cve = sorted_vulns[0].vulnerability.vulnerability_id
 
+        reg = dep.dependency_metadata.get("registry", {})
+
         items.append(DependencyPackage(
             id=str(dep.id),
             name=dep.package_name,
             installedVersion=dep.package_version,
-            latestVersion="N/A",
+            latestVersion=reg.get("latest_version"),
             status=computed_status,
             severity=severity,
             cve=cve,
             license=dep.license or "Unknown",
+            outdated=reg.get("outdated"),
+            publishedAt=reg.get("published_at"),
+            registrySource=reg.get("provider"),
+            registryStatus=reg.get("status"),
             weeklyDownloads=0,
             maintainers=0,
             lastPublished="N/A",
@@ -119,7 +125,7 @@ async def list_dependencies(
             repository=dep.project.name,
             direct=dep.is_direct
         ))
-        
+
     return PaginatedResponse(
         items=items,
         page=page,
@@ -146,11 +152,11 @@ async def get_dependency_detail(
     dep = (await db.execute(stmt)).scalar_one_or_none()
     if not dep:
         return None
-        
+
     # 2. Enforce tenant isolation via the project
     if dep.project.organization_id != organization_id:
         return None
-        
+
     # 3. Check if it belongs to the *latest* scan for that project (optional, but good for consistency)
     latest_scan_ids = await get_latest_scans_for_org(db, organization_id, dep.project_id)
     if dep.scan_id not in latest_scan_ids:
@@ -162,7 +168,7 @@ async def get_dependency_detail(
     vulns = dep.vulnerabilities
     is_vuln = len(vulns) > 0
     computed_status = "vulnerable" if is_vuln else "safe"
-    
+
     severity = None
     cve = None
     if is_vuln:
@@ -172,16 +178,22 @@ async def get_dependency_detail(
         cve = sorted_vulns[0].vulnerability.vulnerability_id
 
     dependents = [edge.parent_dependency.package_name for edge in dep.incoming_edges]
-    
+
+    reg = dep.dependency_metadata.get("registry", {})
+
     return DependencyPackage(
         id=str(dep.id),
         name=dep.package_name,
         installedVersion=dep.package_version,
-        latestVersion="N/A",
+        latestVersion=reg.get("latest_version"),
         status=computed_status,
         severity=severity,
         cve=cve,
         license=dep.license or "Unknown",
+        outdated=reg.get("outdated"),
+        publishedAt=reg.get("published_at"),
+        registrySource=reg.get("provider"),
+        registryStatus=reg.get("status"),
         weeklyDownloads=0,
         maintainers=0,
         lastPublished="N/A",
@@ -205,11 +217,11 @@ async def get_project_graph(db: AsyncSession, project_id: uuid.UUID) -> GraphRes
         .limit(1)
     )
     latest_scan = (await db.execute(scan_stmt)).scalar_one_or_none()
-    
+
     if not latest_scan:
         # No completed scan yet — return empty graph
         return GraphResponse(nodes=[], edges=[])
-    
+
     # Load all dependencies from this scan
     deps_stmt = (
         select(Dependency)
@@ -218,33 +230,33 @@ async def get_project_graph(db: AsyncSession, project_id: uuid.UUID) -> GraphRes
         .order_by(Dependency.package_name)
     )
     dependencies = (await db.execute(deps_stmt)).scalars().all()
-    
+
     if not dependencies:
         return GraphResponse(nodes=[], edges=[])
-    
+
     # Build a root node for the project
     proj_stmt = select(Project).where(Project.id == project_id)
     project = (await db.execute(proj_stmt)).scalar_one_or_none()
     project_label = project.name if project else "Project"
-    
+
     nodes: list[GraphNode] = []
     edges: list[GraphEdge] = []
-    
+
     root_node = GraphNode(id="root", label=project_label, status="safe", depth=0, x=0.0, y=0.0)
     nodes.append(root_node)
-    
+
     # Lay dependency nodes in a circle around the root
     n = len(dependencies)
     radius = max(150.0, n * 25.0)
-    
+
     for i, dep in enumerate(dependencies):
         angle = (2 * math.pi * i) / n
         x = round(radius * math.cos(angle), 2)
         y = round(radius * math.sin(angle), 2)
-        
+
         is_vulnerable = len(dep.vulnerabilities) > 0
         node_status = "vulnerable" if is_vulnerable else "safe"
-        
+
         node = GraphNode(
             id=str(dep.id),
             label=dep.package_name,
@@ -255,6 +267,6 @@ async def get_project_graph(db: AsyncSession, project_id: uuid.UUID) -> GraphRes
         )
         nodes.append(node)
         edges.append(GraphEdge(**{"from": "root", "to": str(dep.id)}))
-    
+
     return GraphResponse(nodes=nodes, edges=edges)
 

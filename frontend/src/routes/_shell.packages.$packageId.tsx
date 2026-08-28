@@ -72,16 +72,32 @@ function PackageDetailsPage() {
         <div className="space-y-4">
           <div className="surface-card grid gap-4 p-5 sm:grid-cols-3">
             {[
-              ["Installed", data.installedVersion || "N/A"],
-              ["Latest", data.latestVersion || "N/A"],
-              ["License", data.license || "—"],
+              ["Installed Version", data.installedVersion || "N/A"],
               [
-                "Weekly downloads",
-                data.weeklyDownloads ? formatCompact(data.weeklyDownloads) : "N/A",
+                "Latest Version",
+                data.registryStatus === "PROVIDER_UNAVAILABLE" || data.registryStatus === "TIMEOUT"
+                  ? "Unavailable"
+                  : data.registryStatus === "NOT_FOUND"
+                    ? "Not Found"
+                    : data.latestVersion || "Unknown",
               ],
-              ["Maintainers", data.maintainers ? String(data.maintainers) : "N/A"],
-              ["Last published", data.lastPublished ? formatDate(data.lastPublished) : "N/A"],
-              ["Bundle size", data.size || "N/A"],
+              [
+                "Outdated",
+                data.outdated === "TRUE"
+                  ? "Outdated"
+                  : data.outdated === "FALSE"
+                    ? "Up to date"
+                    : "Unknown",
+              ],
+              ["License", data.license || "Unknown"],
+              ["Published", data.publishedAt ? formatDate(data.publishedAt) : "Unknown"],
+              [
+                "Registry",
+                data.registryStatus === "PROVIDER_UNAVAILABLE" || data.registryStatus === "TIMEOUT"
+                  ? "Unavailable"
+                  : data.registrySource || "Unknown",
+              ],
+              ["Registry Status", data.registryStatus || "Unknown"],
               ["Advisory", data.cve ?? "None"],
               ["Repository", data.repository],
             ].map(([label, value]) => (
@@ -90,11 +106,6 @@ function PackageDetailsPage() {
                 <p className="mt-1 font-medium">{value}</p>
               </div>
             ))}
-          </div>
-
-          <div className="surface-card p-5">
-            <h2 className="text-base font-semibold">Recommendation</h2>
-            <p className="mt-2 text-sm text-muted-foreground">{data.recommendation || "N/A"}</p>
           </div>
 
           <div className="surface-card p-5">
