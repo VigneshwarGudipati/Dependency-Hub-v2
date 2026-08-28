@@ -142,7 +142,7 @@ class RegistryIntelligenceService:
                     },
                 )
                 await self.session.execute(stmt_upsert)
-                await self.session.commit()
+                await self.session.flush()
 
             future.set_result(meta)
 

@@ -69,7 +69,7 @@ async def test_registry_service_cache_miss(registry_service, monkeypatch, db_ses
 
     # Check DB was interacted with (1 select, 1 insert)
     assert db_session.execute.call_count == 2
-    db_session.commit.assert_awaited_once()
+    db_session.flush.assert_awaited_once()
 
 @pytest.mark.asyncio
 async def test_registry_service_cache_hit(registry_service, monkeypatch, db_session):

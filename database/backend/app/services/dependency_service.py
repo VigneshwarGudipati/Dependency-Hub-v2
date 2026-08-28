@@ -69,8 +69,7 @@ async def list_dependencies(
     elif status == "safe":
         stmt = stmt.outerjoin(DependencyVulnerability, Dependency.id == DependencyVulnerability.dependency_id).where(DependencyVulnerability.id == null())
     elif status == "outdated":
-        # Outdated is DEFERRED, so we return empty if they ask for outdated and we can't compute it.
-        stmt = stmt.where(Dependency.id == uuid.uuid4()) # dummy false condition
+        stmt = stmt.where(Dependency.dependency_metadata["registry"]["outdated"].astext == "true")
 
     # Order by package name
     stmt = stmt.order_by(Dependency.package_name)

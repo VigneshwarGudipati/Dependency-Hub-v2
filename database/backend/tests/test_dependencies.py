@@ -214,6 +214,13 @@ def test_dependencies_filters(client):
         assert resp_search.json()["total"] > 0
         assert all(first_item_name.lower() in item["name"].lower() for item in resp_search.json()["items"])
 
+    # 4. Outdated filter
+    # This assumes mock data setup produces at least one outdated dependency
+    # In test_dependencies_registry_metadata we know axios is TRUE and express is UNKNOWN.
+    # But here in test_dependencies_filters, we just test that the API accepts the filter and returns 200.
+    resp_outdated = client.get("/api/v1/dependencies?status=outdated", headers=headers)
+    assert resp_outdated.status_code == 200
+
 def test_rbac_dependency(client):
     from tests.test_scans import _register_and_login
     token = _register_and_login(client)

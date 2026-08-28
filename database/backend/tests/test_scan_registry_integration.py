@@ -292,3 +292,129 @@ async def test_scan_integration_pypi_unsupported_ecosystem(mock_pypi_get):
             # For '==2.31.0', it is a constraint, not a concrete version, so it's UNKNOWN
             assert reg_meta["outdated"] == "UNKNOWN"
             assert reg_meta["registry_status"] == "SUCCESS"
+@pytest.mark.asyncio
+@patch("app.services.registry.npm.NpmRegistryProvider.get_package_metadata", new_callable=AsyncMock)
+async def test_scan_integration_registry_transaction_rollback(mock_npm_get):
+    """Test that a failure in the scan AFTER registry cache enrichment rolls back dependencies AND cache."""
+    async with TestAsyncSessionLocal() as db:
+        sample_project = await _create_test_project(db)
+
+        from app.models.registry_cache import RegistryCache
+        from sqlalchemy import delete
+        await db.execute(delete(RegistryCache))
+        await db.commit()
+
+        mock_npm_get.return_value = NormalizedRegistryMetadata(
+            ecosystem="npm", package_name="express", latest_version="4.18.2",
+            fetched_at=utc_now(), status=RegistryStatus.SUCCESS, provider="npm"
+        )
+
+        artifact = ProjectArtifact(
+            project_id=sample_project.id,
+            original_filename="package.json",
+            storage_key="test-pkg-rb",
+            size_bytes=100,
+            content_hash="hashrb",
+            upload_status=ArtifactUploadStatus.READY
+        )
+        db.add(artifact)
+        await db.flush()
+
+        from app.models.encryption import ArtifactEncryptionMetadata
+        enc_meta = ArtifactEncryptionMetadata(
+            artifact_id=artifact.id,
+            encrypted_dek_reference="mocked",
+            initialization_vector="mocked",
+            authentication_tag="mocked",
+            key_reference="mocked",
+            checksum="mocked"
+        )
+        db.add(enc_meta)
+        await db.flush()
+
+        with patch("app.services.scan_worker.open") as mock_open, \
+             patch("app.services.scan_worker.key_provider.decrypt_dek"), \
+             patch("app.services.scan_worker.decrypt_artifact") as mock_decrypt:
+
+            mock_decrypt.return_value = b'{"dependencies": {"express": "4.17.1"}}'
+
+            scan = Scan(
+                project_id=sample_project.id,
+                artifact_id=artifact.id,
+                status=ScanStatus.RUNNING,
+                started_at=datetime.datetime.now(datetime.timezone.utc)
+            )
+            db.add(scan)
+            await db.commit()
+
+            engine = ScanEngine()
+
+            # Monkeypatch the engine.run to fail AFTER it completes its internal steps successfully
+            original_run = engine.run
+            async def failing_run(session, scan_obj):
+                await original_run(session, scan_obj)
+
+                # Prove the cache was successfully flushed to the current transaction
+                stmt = select(RegistryCache).where(RegistryCache.package_name == "express")
+                cache_items = (await session.execute(stmt)).scalars().all()
+                assert len(cache_items) == 1, "Cache write must be visible in current transaction before failure"
+
+                raise Exception("Simulated failure AFTER registry enrichment")
+
+            engine.run = failing_run
+
+            scan_id = scan.id
+            try:
+                await engine.run(db, scan)
+            except Exception as e:
+                assert str(e) == "Simulated failure AFTER registry enrichment"
+                await db.rollback()
+
+            # Prove dependency is rolled back
+            stmt = select(Dependency).where(Dependency.scan_id == scan_id)
+            deps = (await db.execute(stmt)).scalars().all()
+            assert len(deps) == 0
+
+            # Prove cache is rolled back
+            stmt_cache = select(RegistryCache).where(RegistryCache.package_name == "express")
+            cache_after = (await db.execute(stmt_cache)).scalars().all()
+            assert len(cache_after) == 0
+
+@pytest.mark.asyncio
+@patch("app.services.registry.npm.NpmRegistryProvider.get_package_metadata", new_callable=AsyncMock)
+async def test_registry_service_flush_not_commit(mock_npm_get):
+    """Test that get_package_metadata flushes to the current transaction but does NOT commit it."""
+
+    # We will use two separate sessions to prove isolation
+    async with TestAsyncSessionLocal() as db_writer:
+        async with TestAsyncSessionLocal() as db_reader:
+            # Clear cache
+            from app.models.registry_cache import RegistryCache
+            from sqlalchemy import delete
+            await db_writer.execute(delete(RegistryCache))
+            await db_writer.commit()
+
+            mock_npm_get.return_value = NormalizedRegistryMetadata(
+                ecosystem="npm", package_name="flush_test_pkg", latest_version="1.0.0",
+                fetched_at=utc_now(), status=RegistryStatus.SUCCESS, provider="npm"
+            )
+
+            from app.services.registry.registry_service import RegistryIntelligenceService
+            registry_service = RegistryIntelligenceService(db_writer)
+            meta, state = await registry_service.get_package_metadata("npm", "flush_test_pkg")
+
+            # Prove the write is visible IN THE SAME TRANSACTION
+            stmt = select(RegistryCache).where(RegistryCache.package_name == "flush_test_pkg")
+            writer_results = (await db_writer.execute(stmt)).scalars().all()
+            assert len(writer_results) == 1, "Flush should make the row visible in the writer transaction"
+
+            # Prove the write is NOT VISIBLE in a separate transaction (proving it's not committed)
+            reader_results = (await db_reader.execute(stmt)).scalars().all()
+            assert len(reader_results) == 0, "Row should NOT be visible to other connections because it is uncommitted"
+
+            # Rollback the writer transaction
+            await db_writer.rollback()
+
+            # Prove the row is gone everywhere
+            writer_results_after = (await db_writer.execute(stmt)).scalars().all()
+            assert len(writer_results_after) == 0, "Row should be gone after rollback"

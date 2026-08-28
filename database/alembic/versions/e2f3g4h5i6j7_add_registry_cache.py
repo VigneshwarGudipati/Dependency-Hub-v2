@@ -19,8 +19,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    registry_status_enum = postgresql.ENUM('SUCCESS', 'NOT_FOUND', 'PROVIDER_UNAVAILABLE', 'RATE_LIMITED', 'INVALID_RESPONSE', 'UNSUPPORTED_REQUEST', name='registry_status_enum')
-    registry_status_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table('registry_cache',
         sa.Column('ecosystem', sa.String(length=255), nullable=False),
@@ -47,6 +45,3 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_registry_cache_package_name'), table_name='registry_cache')
     op.drop_index(op.f('ix_registry_cache_ecosystem'), table_name='registry_cache')
     op.drop_table('registry_cache')
-
-    registry_status_enum = postgresql.ENUM('SUCCESS', 'NOT_FOUND', 'PROVIDER_UNAVAILABLE', 'RATE_LIMITED', 'INVALID_RESPONSE', 'UNSUPPORTED_REQUEST', name='registry_status_enum')
-    registry_status_enum.drop(op.get_bind(), checkfirst=True)
