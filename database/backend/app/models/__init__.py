@@ -31,6 +31,7 @@ from app.models.finding import Finding, FindingSeverity, FindingStatus, FindingT
 from app.models.policy import SecurityPolicy
 from app.models.audit import AuditAction, AuditLog
 from app.models.refresh_token import RefreshToken
+from app.models.registry_cache import RegistryCache
 
 __all__ = [
     # Base
@@ -89,4 +90,5 @@ __all__ = [
     "SecurityPolicy",
     "AuditLog",
     "AuditAction",
+    "RegistryCache",
 ]

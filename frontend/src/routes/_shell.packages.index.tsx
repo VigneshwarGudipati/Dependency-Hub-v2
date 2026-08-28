@@ -114,8 +114,7 @@ function PackagesPage() {
                   <th className="px-4 py-3">Installed</th>
                   <th className="px-4 py-3">Latest</th>
                   <th className="px-4 py-3">License</th>
-                  <th className="px-4 py-3">Downloads</th>
-                  <th className="px-4 py-3">Health</th>
+                  <th className="px-4 py-3">Registry</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3" />
                 </tr>
@@ -125,12 +124,21 @@ function PackagesPage() {
                   <tr key={pkg.id} className="hover:bg-muted/50">
                     <td className="px-4 py-3 font-medium">{pkg.name}</td>
                     <td className="px-4 py-3 font-mono text-xs">{pkg.installedVersion}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{pkg.latestVersion || "N/A"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{pkg.license || "—"}</td>
-                    <td className="px-4 py-3 tabular-nums">
-                      {pkg.weeklyDownloads ? formatCompact(pkg.weeklyDownloads) : "N/A"}
+                    <td className="px-4 py-3 font-mono text-xs">
+                      {pkg.registryStatus === "PROVIDER_UNAVAILABLE" ||
+                      pkg.registryStatus === "TIMEOUT"
+                        ? "Unavailable"
+                        : pkg.registryStatus === "NOT_FOUND"
+                          ? "Not Found"
+                          : pkg.latestVersion || "Unknown"}
                     </td>
-                    <td className="px-4 py-3 tabular-nums">{pkg.healthScore || "N/A"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{pkg.license || "Unknown"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {pkg.registryStatus === "PROVIDER_UNAVAILABLE" ||
+                      pkg.registryStatus === "TIMEOUT"
+                        ? "Unavailable"
+                        : pkg.registrySource || "Unknown"}
+                    </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={pkg.status} />
                     </td>

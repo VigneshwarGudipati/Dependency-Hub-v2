@@ -8,11 +8,15 @@ class DependencyPackage(BaseModel):
     id: str
     name: str
     installedVersion: str
-    latestVersion: str  # DEFERRED
+    latestVersion: Optional[str] = None
     status: str  # safe, outdated, vulnerable
     severity: Optional[str] = None
     cve: Optional[str] = None
     license: str
+    outdated: Optional[str] = None
+    publishedAt: Optional[str] = None
+    registrySource: Optional[str] = None
+    registryStatus: Optional[str] = None
     weeklyDownloads: int  # DEFERRED
     maintainers: int  # DEFERRED
     lastPublished: str  # DEFERRED

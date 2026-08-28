@@ -15,6 +15,8 @@ from app.models.dependency import Dependency, DependencyType
 from app.services.encryption_service import key_provider, decrypt_artifact
 from app.services.parsers import get_parser
 from app.services.vulnerability_service import vulnerability_provider
+from app.services.registry.registry_service import RegistryIntelligenceService
+from sqlalchemy.orm.attributes import flag_modified
 
 
 logger = logging.getLogger(__name__)
@@ -22,6 +24,16 @@ logger = logging.getLogger(__name__)
 
 class ScanEngine:
     """The core engine that runs the analysis phases (extraction, parsing, matching)."""
+
+    def _get_concrete_version(self, constraint: str | None) -> str | None:
+        if not constraint or constraint == "*":
+            return None
+        # Exclude typical semver operators and wildcards, including strict equality ==
+        if any(c in constraint for c in "^~><=*xX="):
+            return None
+        if constraint.lower() == "latest":
+            return None
+        return constraint.strip()
 
     async def run(self, db: AsyncSession, scan: Scan) -> None:
         """Executes the analysis."""
@@ -72,12 +84,13 @@ class ScanEngine:
 
         db_deps = []
         for d in deps_info:
+            concrete_version = self._get_concrete_version(d.version_constraint)
             dep_record = Dependency(
                 project_id=scan.project_id,
                 scan_id=scan.id,
                 ecosystem_id=eco.id,
                 package_name=d.name,
-                package_version=d.version_constraint or "*",
+                package_version=concrete_version or "UNKNOWN",
                 version_constraint=d.version_constraint,
                 dependency_type=DependencyType.DEVELOPMENT if d.is_dev else DependencyType.RUNTIME,
                 is_direct=True,
@@ -92,6 +105,39 @@ class ScanEngine:
         # 5. Match Vulnerabilities
         vuln_count = await vulnerability_provider.match_vulnerabilities(db, scan.id, db_deps)
         scan.vulnerable_dependencies = vuln_count
+
+        # 6. Registry Enrichment
+        registry_service = RegistryIntelligenceService(db)
+        for dep_record in db_deps:
+            installed_version = dep_record.package_version if dep_record.package_version != "UNKNOWN" else None
+            try:
+                meta, cache_state = await registry_service.get_package_metadata(
+                    ecosystem=eco_name,
+                    package_name=dep_record.package_name,
+                    installed_version=installed_version
+                )
+
+                # Merge into dictionary
+                current_meta = dict(dep_record.dependency_metadata) if dep_record.dependency_metadata else {}
+                reg_data = meta.model_dump(mode="json")
+                reg_data["cache_state"] = cache_state.value
+                reg_data["registry_status"] = reg_data["status"]
+                current_meta["registry"] = reg_data
+                dep_record.dependency_metadata = current_meta
+
+                flag_modified(dep_record, "dependency_metadata")
+            except Exception as e:
+                logger.error(f"Registry enrichment failed for {dep_record.package_name}: {e.__class__.__name__}")
+                # Preserve OSV findings, do not fail scan
+                current_meta = dict(dep_record.dependency_metadata) if dep_record.dependency_metadata else {}
+                current_meta["registry"] = {
+                    "registry_status": "UNKNOWN",
+                    "error_code": "INTERNAL_ERROR"
+                }
+                dep_record.dependency_metadata = current_meta
+                flag_modified(dep_record, "dependency_metadata")
+
+        await db.flush()
 
         logger.info(f"ScanEngine completed for scan {scan.id}, {len(deps_info)} dependencies parsed, {vuln_count} vulnerabilities found.")
 

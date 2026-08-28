@@ -280,13 +280,13 @@ function ScannerPage() {
 
             <div className="surface-card p-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-base font-semibold">Resolved packages (Deferred)</h2>
+                <h2 className="text-base font-semibold">Resolved packages</h2>
               </div>
               <div className="mt-4">
                 <EmptyState
                   icon={FileBarChart}
-                  title="Package details deferred to P1 phase."
-                  description="The backend does not yet resolve individual packages and vulnerabilities. View the backend system design for P1."
+                  title="Package details available in repository"
+                  description="The scan is complete. Navigate to the repository Packages tab to view detailed dependency and vulnerability reports."
                 />
               </div>
             </div>
