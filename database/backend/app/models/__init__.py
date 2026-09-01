@@ -32,6 +32,15 @@ from app.models.policy import SecurityPolicy
 from app.models.audit import AuditAction, AuditLog
 from app.models.refresh_token import RefreshToken
 from app.models.registry_cache import RegistryCache
+from app.models.report import (
+    Report,
+    ReportArtifact,
+    ReportEncryptionMetadata,
+    ReportFormat,
+    ReportSnapshot,
+    ReportStatus,
+    ReportType,
+)
 
 __all__ = [
     # Base
@@ -91,4 +100,12 @@ __all__ = [
     "AuditLog",
     "AuditAction",
     "RegistryCache",
+    # Reporting
+    "Report",
+    "ReportArtifact",
+    "ReportEncryptionMetadata",
+    "ReportFormat",
+    "ReportSnapshot",
+    "ReportStatus",
+    "ReportType",
 ]

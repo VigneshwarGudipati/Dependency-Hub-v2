@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.scan import Scan
     from app.models.dependency import Dependency
     from app.models.finding import Finding
+    from app.models.report import Report
 
 
 class ProjectType(str, enum.Enum):
@@ -140,6 +141,11 @@ class Project(Base, PrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     findings: Mapped[List["Finding"]] = relationship(
         "Finding",
         back_populates="project",
+    )
+    reports: Mapped[List["Report"]] = relationship(
+        "Report",
+        back_populates="project",
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (

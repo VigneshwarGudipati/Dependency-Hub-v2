@@ -44,3 +44,30 @@ async def mock_registry_httpx(monkeypatch):
         return await original_get(self_or_client, url, *args, **kwargs)
 
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
+
+@pytest.fixture(autouse=True)
+def cleanup_test_artifacts():
+    """Ensure artifacts created during the test are removed."""
+    from pathlib import Path
+    from app.core.config import settings
+    storage_dir = Path(settings.STORAGE_DIR)
+
+    # Snapshot before test
+    files_before = set()
+    if storage_dir.exists():
+        files_before = {f for f in storage_dir.rglob('*') if f.is_file()}
+
+    yield
+
+    # Cleanup after test
+    if storage_dir.exists():
+        files_after = {f for f in storage_dir.rglob('*') if f.is_file()}
+        new_files = files_after - files_before
+        for new_file in new_files:
+            try:
+                new_file.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError as e:
+                # Cleanup failures must not be silently swallowed
+                raise RuntimeError(f"Failed to cleanup test storage file {new_file}") from e

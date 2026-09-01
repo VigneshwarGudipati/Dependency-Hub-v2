@@ -31,6 +31,14 @@ class AuditAction(str, enum.Enum):
     MEMBER_ADDED = "MEMBER_ADDED"
     MEMBER_REMOVED = "MEMBER_REMOVED"
     ROLE_CHANGED = "ROLE_CHANGED"
+    REPORT_CREATED = "REPORT_CREATED"
+    REPORT_GENERATION_STARTED = "REPORT_GENERATION_STARTED"
+    REPORT_GENERATION_COMPLETED = "REPORT_GENERATION_COMPLETED"
+    REPORT_GENERATION_FAILED = "REPORT_GENERATION_FAILED"
+    REPORT_DOWNLOADED = "REPORT_DOWNLOADED"
+    REPORT_RETRY_REQUESTED = "REPORT_RETRY_REQUESTED"
+    REPORT_DELETED = "REPORT_DELETED"
+    REPORT_EXPIRED = "REPORT_EXPIRED"
 
 
 class AuditLog(Base, PrimaryKeyMixin):
@@ -56,7 +64,7 @@ class AuditLog(Base, PrimaryKeyMixin):
         index=True,
     )
     action: Mapped[AuditAction] = mapped_column(
-        Enum(AuditAction, name="audit_action_enum", native_enum=False),
+        Enum(AuditAction, name="audit_action_enum", native_enum=False, length=64),
         nullable=False,
         index=True,
     )

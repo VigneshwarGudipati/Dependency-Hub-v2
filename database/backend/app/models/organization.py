@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from app.models.finding import Finding
     from app.models.policy import SecurityPolicy
     from app.models.audit import AuditLog
+    from app.models.report import Report
 
 
 class MemberStatus(str, enum.Enum):
@@ -71,6 +72,10 @@ class Organization(Base, PrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     )
     audit_logs: Mapped[List["AuditLog"]] = relationship(
         "AuditLog",
+        back_populates="organization",
+    )
+    reports: Mapped[List["Report"]] = relationship(
+        "Report",
         back_populates="organization",
     )
 

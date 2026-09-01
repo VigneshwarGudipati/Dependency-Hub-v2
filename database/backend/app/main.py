@@ -49,6 +49,7 @@ from app.api.v1.members import router as members_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.dependencies import router as dependencies_router
 from app.api.v1.vulnerabilities import router as vulnerabilities_router
+from app.api.v1.reports import router as reports_router
 
 # Routers
 app.include_router(health_router, tags=["System"])
@@ -59,3 +60,4 @@ app.include_router(members_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(dependencies_router, prefix="/api/v1")
 app.include_router(vulnerabilities_router, prefix="/api/v1")
+app.include_router(reports_router, prefix="/api/v1")

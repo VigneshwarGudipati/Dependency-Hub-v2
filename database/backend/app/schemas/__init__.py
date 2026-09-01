@@ -10,6 +10,7 @@ from app.schemas.auth import (
 )
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectBase
 from app.schemas.member import MemberResponse
+from app.schemas.report import ReportCreate, ReportResponse, ReportDetailResponse
 
 __all__ = [
     "HealthResponse",
@@ -25,4 +26,7 @@ __all__ = [
     "ProjectResponse",
     "ProjectBase",
     "MemberResponse",
+    "ReportCreate",
+    "ReportResponse",
+    "ReportDetailResponse",
 ]

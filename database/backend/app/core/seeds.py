@@ -27,6 +27,11 @@ DEFAULT_PERMISSIONS: List[Dict[str, str]] = [
     {"code": "finding.read", "description": "View vulnerability and compliance findings", "category": "finding"},
     {"code": "finding.update", "description": "Triage, acknowledge, or resolve findings", "category": "finding"},
     {"code": "audit.read", "description": "View organization audit event trail", "category": "audit"},
+    {"code": "report.create", "description": "Request new report generation", "category": "report"},
+    {"code": "report.read", "description": "View report status and metadata", "category": "report"},
+    {"code": "report.download", "description": "Download generated report artifacts", "category": "report"},
+    {"code": "report.retry", "description": "Retry failed report generation", "category": "report"},
+    {"code": "report.delete", "description": "Delete reports", "category": "report"},
 ]
 
 ROLE_PERMISSION_MATRIX: Dict[SystemRoleName, List[str]] = {
@@ -45,6 +50,11 @@ ROLE_PERMISSION_MATRIX: Dict[SystemRoleName, List[str]] = {
         "scan.read",
         "dependency.read",
         "finding.read",
+        "report.create",
+        "report.read",
+        "report.download",
+        "report.retry",
+        "report.delete",
     ],
     SystemRoleName.SECURITY_ANALYST: [
         "organization.read",
@@ -56,6 +66,10 @@ ROLE_PERMISSION_MATRIX: Dict[SystemRoleName, List[str]] = {
         "finding.read",
         "finding.update",
         "audit.read",
+        "report.create",
+        "report.read",
+        "report.download",
+        "report.retry",
     ],
     SystemRoleName.VIEWER: [
         "organization.read",
@@ -64,6 +78,8 @@ ROLE_PERMISSION_MATRIX: Dict[SystemRoleName, List[str]] = {
         "scan.read",
         "dependency.read",
         "finding.read",
+        "report.read",
+        "report.download",
     ],
 }
 
