@@ -2,6 +2,38 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
+class BreakingChangeData(BaseModel):
+    category: str
+    description: str
+    impact: str
+
+class CodeImpactData(BaseModel):
+    file_path: str
+    line_number: Optional[int] = None
+    detected_pattern: str
+    risk: str
+    recommendation: str
+
+class FailureRiskData(BaseModel):
+    scenario: str
+    risk: str
+    trigger: str
+    affected_area: str
+    prevention: str
+
+class DependencyUpgradeAnalysis(BaseModel):
+    minimum_fixed_version: Optional[str] = None
+    recommended_version: Optional[str] = None
+    latest_known_version: Optional[str] = None
+    manual_review_required: bool = False
+    upgrade_risk: Optional[str] = None
+    security_benefit: Optional[str] = None
+    compatibility_risk: Optional[str] = None
+    breaking_changes: List[BreakingChangeData] = Field(default_factory=list)
+    code_impacts: List[CodeImpactData] = Field(default_factory=list)
+    failure_risks: List[FailureRiskData] = Field(default_factory=list)
+    exact_upgrade_command: Optional[str] = None
+
 class ReportProjectData(BaseModel):
     id: str
     name: str
@@ -38,6 +70,7 @@ class ReportDependencyData(BaseModel):
     dependency_type: str
     is_direct: bool
     registry_metadata: Dict[str, Any] = Field(default_factory=dict)
+    upgrade_analysis: Optional[DependencyUpgradeAnalysis] = None
 
     @property
     def outdated(self) -> str:
@@ -59,6 +92,7 @@ class ReportVulnerabilityData(BaseModel):
     title: str
     severity: str
     finding_metadata: Dict[str, Any] = Field(default_factory=dict)
+    remediation_status: Optional[str] = None
 
     @property
     def patched_version(self) -> str:
@@ -67,6 +101,11 @@ class ReportVulnerabilityData(BaseModel):
     @property
     def affected_versions(self) -> str:
         return self.finding_metadata.get("affected_versions", "UNKNOWN")
+
+class ReportSafeUpgradePlan(BaseModel):
+    before_upgrade: List[str] = Field(default_factory=list)
+    during_upgrade: List[str] = Field(default_factory=list)
+    after_upgrade: List[str] = Field(default_factory=list)
 
 class ReportData(BaseModel):
     """
@@ -79,6 +118,7 @@ class ReportData(BaseModel):
     summary: ReportSummaryData
     dependencies: List[ReportDependencyData]
     vulnerabilities: List[ReportVulnerabilityData]
+    safe_upgrade_plan: Optional[ReportSafeUpgradePlan] = None
 
     @classmethod
     def from_snapshot(cls, snapshot_data: Dict[str, Any]) -> "ReportData":
@@ -119,5 +159,6 @@ class ReportData(BaseModel):
             scan=payload.get("scan", {}),
             summary=payload_summary,
             dependencies=payload.get("dependencies", []),
-            vulnerabilities=payload.get("vulnerabilities", [])
+            vulnerabilities=payload.get("vulnerabilities", []),
+            safe_upgrade_plan=payload.get("safe_upgrade_plan")
         )
