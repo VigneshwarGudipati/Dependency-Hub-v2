@@ -18,6 +18,7 @@ class ScanResponse(BaseModel):
     artifact_id: uuid.UUID
     status: ScanStatus
     scan_type: ScanType
+    created_at: datetime
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
