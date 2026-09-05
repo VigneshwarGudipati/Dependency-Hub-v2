@@ -33,6 +33,7 @@ class DependencyUpgradeAnalysis(BaseModel):
     code_impacts: List[CodeImpactData] = Field(default_factory=list)
     failure_risks: List[FailureRiskData] = Field(default_factory=list)
     exact_upgrade_command: Optional[str] = None
+    resolved_vulnerabilities: List[str] = Field(default_factory=list)
 
 class ReportProjectData(BaseModel):
     id: str
