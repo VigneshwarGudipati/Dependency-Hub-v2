@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from app.services.reporting.report_data import ReportData
 from app.services.reporting.analyzer.dependency_tree_analyzer import DependencyTreeAnalyzer
 from app.services.reporting.analyzer.vulnerability_intelligence_analyzer import VulnerabilityIntelligenceAnalyzer
+from app.services.reporting.analyzer.upgrade_validation_analyzer import UpgradeValidationAnalyzer
 
 class ReportDocumentMetadata(BaseModel):
     document_schema_version: str = "1.0.0"
@@ -370,7 +371,78 @@ class ReportDocument(BaseModel):
             )
             doc.sections.append(intel_section)
 
-        # 9. Limitations / Data Availability
+        # 9. Upgrade Validation Matrix & Rollback Plan
+        validation_results = UpgradeValidationAnalyzer().analyze(data)
+        if validation_results:
+            # We construct three sections: A, B, and C as requested
+
+            # A. Pre-Upgrade Checklist
+            checklist_content = []
+            for res in validation_results:
+                checklist_content.append(f"### {res.package_name}")
+                for item in res.pre_upgrade_checklist:
+                    checklist_content.append(f"- [ ] {item}")
+                checklist_content.append("")
+
+            pre_upgrade_section = GenericSection(
+                title="A. Pre-Upgrade Checklist",
+                content="\n".join(checklist_content)
+            )
+            doc.sections.append(pre_upgrade_section)
+
+            # B. Upgrade & Rollback Plan
+            rollback_content = []
+            for res in validation_results:
+                rollback_content.append(f"### {res.package_name}")
+                rollback_content.append("**Exact Upgrade Command:**")
+                rollback_content.append(f"`{res.exact_upgrade_command}`")
+                rollback_content.append("\n**Rollback Procedural Steps:**")
+                for step in res.rollback_plan.procedural_steps:
+                    rollback_content.append(f"- {step}")
+                rollback_content.append("\n**Rollback Verification:**")
+                for step in res.rollback_plan.verification_steps:
+                    rollback_content.append(f"- {step}")
+                rollback_content.append("")
+
+            rollback_section = GenericSection(
+                title="B. Upgrade & Rollback Plan",
+                content="\n".join(rollback_content)
+            )
+            doc.sections.append(rollback_section)
+
+            # C. Post-Upgrade Validation Matrix
+            matrix_tables = []
+            for res in validation_results:
+                matrix_rows = []
+                for val in res.validations:
+                    matrix_rows.append(
+                        TableRow(cells={
+                            "category": val.category,
+                            "expected_result": val.expected_result,
+                            "status": val.status,
+                            "evidence": val.evidence_source
+                        })
+                    )
+                matrix_table = DataTable(
+                    title=f"Validation Matrix: {res.package_name}",
+                    headers=[
+                        TableHeader(label="Category", key="category"),
+                        TableHeader(label="Expected Result", key="expected_result"),
+                        TableHeader(label="Status", key="status"),
+                        TableHeader(label="Evidence Source", key="evidence")
+                    ],
+                    rows=matrix_rows
+                )
+                matrix_tables.append(matrix_table)
+
+            matrix_section = GenericSection(
+                title="C. Post-Upgrade Validation Matrix",
+                content="This matrix tracks post-upgrade validation status based on available snapshot evidence. Default status is NOT VERIFIED.",
+                tables=matrix_tables
+            )
+            doc.sections.append(matrix_section)
+
+        # 10. Limitations / Data Availability
         limitations = []
         if data.summary.unknown_packages > 0:
             limitations.append(f"{data.summary.unknown_packages} packages have an unknown registry status.")
