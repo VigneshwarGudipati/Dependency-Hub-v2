@@ -37,30 +37,12 @@ class CompatibilityAnalyzer:
             enriched.compatibility_risk = "UNKNOWN"
             enriched.manual_review_required = True
             enriched.breaking_changes = []
-            enriched.failure_risks = [
-                FailureRiskData(
-                    scenario="Unsupported ecosystem",
-                    risk="UNKNOWN",
-                    trigger="Ecosystem not supported for compatibility analysis",
-                    affected_area="Unknown",
-                    prevention="Manual review required: authoritative migration guidance unavailable."
-                )
-            ]
             return enriched
 
         if not recommended_version or recommended_version == "UNKNOWN":
             # Missing upgrade data -> MANUAL REVIEW REQUIRED
             enriched.compatibility_risk = "UNKNOWN"
             enriched.manual_review_required = True
-            enriched.failure_risks = [
-                FailureRiskData(
-                    scenario="Missing recommended version",
-                    risk="MANUAL REVIEW REQUIRED",
-                    trigger="No safe upgrade path identified",
-                    affected_area="Unknown",
-                    prevention="Manual review required: authoritative migration guidance unavailable."
-                )
-            ]
             return enriched
 
         distance = get_version_distance(current_version, recommended_version, ecosystem)
@@ -80,15 +62,6 @@ class CompatibilityAnalyzer:
                     impact="Verified breaking changes introduced in recommended version."
                 )
             ]
-            enriched.failure_risks = [
-                FailureRiskData(
-                    scenario="Verified breaking change",
-                    risk="VERIFIED",
-                    trigger="Authoritative migration metadata explicitly confirms breaking changes.",
-                    affected_area="Package Integration",
-                    prevention="Follow official migration guidance."
-                )
-            ]
             return enriched
 
         # 3. Heuristics: Major version transition + Code Impacts
@@ -100,43 +73,13 @@ class CompatibilityAnalyzer:
             if has_source_usage:
                 enriched.compatibility_risk = "HIGH"
                 enriched.manual_review_required = True
-                enriched.failure_risks = [
-                    FailureRiskData(
-                        scenario="Major version transition with source usage",
-                        risk="POTENTIAL",
-                        trigger=f"Upgrading crosses a major-version boundary and is directly used in {files_affected} source file(s).",
-                        affected_area="Application stability",
-                        prevention="Potential application failure risk: compatibility review required. Manual review required: authoritative migration guidance unavailable."
-                    )
-                ]
             else:
                 enriched.compatibility_risk = "MEDIUM"
                 enriched.manual_review_required = True
-                enriched.failure_risks = [
-                    FailureRiskData(
-                        scenario="Major version transition without verified source usage",
-                        risk="POTENTIAL",
-                        trigger="Upgrading crosses a major-version boundary.",
-                        affected_area="Application stability",
-                        prevention="Potential application failure risk: compatibility review required. Manual review required: authoritative migration guidance unavailable."
-                    )
-                ]
             return enriched
 
         # 4. No major transition, no explicit evidence -> MANUAL REVIEW REQUIRED
         enriched.compatibility_risk = "LOW" if distance in ["PATCH", "MINOR"] else "UNKNOWN"
         enriched.manual_review_required = True
-
-        scenario_desc = f"{distance.capitalize()} version transition" if distance in ["PATCH", "MINOR"] else "No compatibility evidence"
-
-        enriched.failure_risks = [
-            FailureRiskData(
-                scenario=scenario_desc,
-                risk="MANUAL REVIEW REQUIRED",
-                trigger="No authoritative breaking change evidence found.",
-                affected_area="Unknown",
-                prevention="Manual review required: authoritative migration guidance unavailable."
-            )
-        ]
 
         return enriched
