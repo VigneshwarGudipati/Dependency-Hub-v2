@@ -94,8 +94,11 @@ class ReportDocument(BaseModel):
             title="Dependency Inventory",
             headers=[
                 TableHeader(label="Package", key="package"),
+                TableHeader(label="Ecosystem", key="ecosystem"),
                 TableHeader(label="Version", key="version"),
                 TableHeader(label="Type", key="type"),
+                TableHeader(label="Direct", key="is_direct"),
+                TableHeader(label="License", key="license"),
                 TableHeader(label="Registry State", key="outdated"),
                 TableHeader(label="Recommended", key="recommended"),
                 TableHeader(label="Upgrade Risk", key="upgrade_risk")
@@ -108,8 +111,11 @@ class ReportDocument(BaseModel):
             dep_table.rows.append(TableRow(cells={
                 "id": dep.id,
                 "package": dep.package_name,
+                "ecosystem": dep.ecosystem,
                 "version": dep.package_version,
                 "type": dep.dependency_type,
+                "is_direct": "Yes" if dep.is_direct else "No",
+                "license": dep.registry_metadata.get("license", "UNKNOWN"),
                 "outdated": "Outdated" if dep.outdated == "TRUE" else "Up to date" if dep.outdated == "FALSE" else "Unknown",
                 "recommended": rec,
                 "upgrade_risk": risk
