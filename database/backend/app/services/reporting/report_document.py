@@ -65,6 +65,41 @@ class ReportDocument(BaseModel):
             scan_id=data.scan.id
         )
 
+        # 1. Cover
+        cover_section = GenericSection(
+            title="Report Cover",
+            content=(
+                f"**Report Title:** Security Dependency Report\n"
+                f"**Project:** {data.project.name}\n"
+                f"**Scan ID:** {data.scan.id}\n"
+                f"**Report ID:** {metadata.report_id}\n"
+                f"**Generated At:** {metadata.created_at}\n"
+            )
+        )
+        doc.sections.append(cover_section)
+
+        # Pre-compute metrics for Dashboard & Final Recommendation
+        manual_reviews = 0
+        fixes_available = set()
+        high_compatibility_risks = 0
+        high_failure_risks = 0
+
+        for dep in data.dependencies:
+            if dep.upgrade_analysis:
+                if dep.upgrade_analysis.manual_review_required or dep.upgrade_analysis.exact_upgrade_command is None:
+                    manual_reviews += 1
+                if dep.upgrade_analysis.resolved_vulnerabilities:
+                    for v_id in dep.upgrade_analysis.resolved_vulnerabilities:
+                        fixes_available.add(v_id)
+                if dep.upgrade_analysis.compatibility_risk in ("HIGH", "CRITICAL"):
+                    high_compatibility_risks += 1
+                if any(fr.risk in ("HIGH", "CRITICAL") for fr in dep.upgrade_analysis.failure_risks):
+                    high_failure_risks += 1
+
+        remediated_count = sum(1 for v in data.vulnerabilities if v.remediation_status == "VERIFIED REMEDIATED")
+        still_present_count = sum(1 for v in data.vulnerabilities if v.remediation_status == "VERIFIED STILL PRESENT")
+        no_follow_up_count = sum(1 for v in data.vulnerabilities if v.remediation_status == "NO FOLLOW-UP SCAN")
+
         # 2. Executive Summary Section
         summary_section = GenericSection(
             title="Executive Summary",
@@ -75,6 +110,10 @@ class ReportDocument(BaseModel):
                 MetricCard(label="Total Findings", value=str(data.summary.vulnerability_findings), severity_class="danger" if data.summary.vulnerability_findings > 0 else "success"),
                 MetricCard(label="Outdated Packages", value=str(data.summary.outdated_packages), severity_class="warning"),
                 MetricCard(label="Unknown Registry State", value=str(data.summary.unknown_packages)),
+                MetricCard(label="Manual Reviews Required", value=str(manual_reviews), severity_class="warning" if manual_reviews > 0 else "success"),
+                MetricCard(label="Fix Evidence Available", value=str(len(fixes_available)), severity_class="success"),
+                MetricCard(label="Verified Remediated", value=str(remediated_count), severity_class="success"),
+                MetricCard(label="Verified Still Present", value=str(still_present_count), severity_class="danger" if still_present_count > 0 else None),
             ]
         )
         doc.sections.append(summary_section)
@@ -127,115 +166,7 @@ class ReportDocument(BaseModel):
         inventory_section = GenericSection(title="Dependencies", content="", tables=[dep_table])
         doc.sections.append(inventory_section)
 
-        # 5. Vulnerability Findings Table
-        vuln_table = DataTable(
-            title="Vulnerability Findings",
-            headers=[
-                TableHeader(label="Advisory", key="advisory"),
-                TableHeader(label="Severity", key="severity"),
-                TableHeader(label="Package", key="package"),
-                TableHeader(label="Patched Version", key="patched"),
-                TableHeader(label="Remediation", key="remediation")
-            ],
-            rows=[]
-        )
-
-        # Fast lookup for dependency names
-        dep_map = {dep.id: dep.package_name for dep in data.dependencies}
-
-        for vuln in data.vulnerabilities:
-            pkg_name = dep_map.get(vuln.dependency_id, "UNKNOWN")
-            vuln_table.rows.append(TableRow(cells={
-                "advisory": vuln.vulnerability_id,
-                "severity": vuln.severity,
-                "package": pkg_name,
-                "patched": vuln.patched_version,
-                "remediation": vuln.remediation_status or "Open"
-            }))
-
-        findings_section = GenericSection(title="Vulnerabilities", content="", tables=[vuln_table])
-        doc.sections.append(findings_section)
-
-        # 5.5 Optional Upgrade Analysis & Code Impact Sections
-        for dep in data.dependencies:
-            if not dep.upgrade_analysis:
-                continue
-            ua = dep.upgrade_analysis
-            content_lines = [f"Dependency: {dep.package_name}"]
-            if ua.minimum_fixed_version:
-                content_lines.append(f"Minimum fixed version: {ua.minimum_fixed_version}")
-            if ua.recommended_version:
-                content_lines.append(f"Recommended version: {ua.recommended_version}")
-            if ua.latest_known_version:
-                content_lines.append(f"Latest known version: {ua.latest_known_version}")
-            if ua.manual_review_required:
-                content_lines.append("MANUAL REVIEW REQUIRED for this upgrade.")
-            if ua.exact_upgrade_command:
-                content_lines.append(f"Command: {ua.exact_upgrade_command}")
-
-            ua_metrics = []
-            if ua.upgrade_risk:
-                ua_metrics.append(MetricCard(label="Upgrade Risk", value=ua.upgrade_risk, severity_class="high" if ua.upgrade_risk in ["HIGH", "CRITICAL"] else "medium" if ua.upgrade_risk == "MEDIUM" else "low"))
-            if ua.security_benefit:
-                ua_metrics.append(MetricCard(label="Security Benefit", value=ua.security_benefit, severity_class="success"))
-            if ua.compatibility_risk:
-                ua_metrics.append(MetricCard(label="Compatibility Risk", value=ua.compatibility_risk, severity_class="danger" if ua.compatibility_risk in ["HIGH", "CRITICAL"] else "warning" if ua.compatibility_risk == "MEDIUM" else "success"))
-
-            ua_tables = []
-
-            if ua.breaking_changes:
-                bc_table = DataTable(
-                    title="Breaking Changes",
-                    headers=[TableHeader(label="Category", key="category"), TableHeader(label="Impact", key="impact"), TableHeader(label="Description", key="description")],
-                    rows=[TableRow(cells={"category": bc.category, "impact": bc.impact, "description": bc.description}) for bc in ua.breaking_changes]
-                )
-                ua_tables.append(bc_table)
-
-            if ua.code_impacts:
-                ci_table = DataTable(
-                    title="Source Code Impact",
-                    headers=[TableHeader(label="File", key="file"), TableHeader(label="Line", key="line"), TableHeader(label="Risk", key="risk"), TableHeader(label="Recommendation", key="recommendation")],
-                    rows=[TableRow(cells={"file": ci.file_path, "line": str(ci.line_number or ""), "risk": ci.risk, "recommendation": ci.recommendation}) for ci in ua.code_impacts]
-                )
-                ua_tables.append(ci_table)
-
-            if ua.failure_risks:
-                fr_table = DataTable(
-                    title="Potential Failure Risks",
-                    headers=[TableHeader(label="Scenario", key="scenario"), TableHeader(label="Risk", key="risk"), TableHeader(label="Prevention", key="prevention")],
-                    rows=[TableRow(cells={"scenario": fr.scenario, "risk": fr.risk, "prevention": fr.prevention}) for fr in ua.failure_risks]
-                )
-                ua_tables.append(fr_table)
-
-            ua_section = GenericSection(
-                title=f"Upgrade Analysis: {dep.package_name}",
-                content="\\n".join(content_lines),
-                metrics=ua_metrics,
-                tables=ua_tables
-            )
-            doc.sections.append(ua_section)
-
-        # 5.6 Safe Upgrade Plan Section
-        if data.safe_upgrade_plan:
-            plan = data.safe_upgrade_plan
-            content_lines = ["Follow this safe upgrade procedure:"]
-            if plan.before_upgrade:
-                content_lines.append("\\nBEFORE UPGRADE:")
-                content_lines.extend([f"- {step}" for step in plan.before_upgrade])
-            if plan.during_upgrade:
-                content_lines.append("\\nDURING UPGRADE:")
-                content_lines.extend([f"- {step}" for step in plan.during_upgrade])
-            if plan.after_upgrade:
-                content_lines.append("\\nAFTER UPGRADE:")
-                content_lines.extend([f"- {step}" for step in plan.after_upgrade])
-
-            plan_section = GenericSection(
-                title="Safe Upgrade Plan",
-                content="\\n".join(content_lines)
-            )
-            doc.sections.append(plan_section)
-
-        # 6. Dependency Tree Summary Section
+        # 5. Dependency Tree Summary Section
         tree_result = DependencyTreeAnalyzer().analyze(data)
 
         tree_metrics = [
@@ -292,7 +223,7 @@ class ReportDocument(BaseModel):
         )
         doc.sections.append(tree_section)
 
-        # 7. Software Inventory Metadata Section
+        # 6. Software Inventory Metadata Section
         schema_version = data.metadata.get("schema_version", "UNKNOWN")
         edge_status = "present" if tree_result.edges_available else "absent"
         sbom_content_lines = [
@@ -327,6 +258,34 @@ class ReportDocument(BaseModel):
         )
         doc.sections.append(sbom_section)
 
+        # 7. Vulnerability Findings Table
+        vuln_table = DataTable(
+            title="Vulnerability Findings",
+            headers=[
+                TableHeader(label="Advisory", key="advisory"),
+                TableHeader(label="Severity", key="severity"),
+                TableHeader(label="Package", key="package"),
+                TableHeader(label="Patched Version", key="patched"),
+                TableHeader(label="Remediation", key="remediation")
+            ],
+            rows=[]
+        )
+
+        dep_map = {dep.id: dep.package_name for dep in data.dependencies}
+
+        for vuln in data.vulnerabilities:
+            pkg_name = dep_map.get(vuln.dependency_id, "UNKNOWN")
+            vuln_table.rows.append(TableRow(cells={
+                "advisory": vuln.vulnerability_id,
+                "severity": vuln.severity,
+                "package": pkg_name,
+                "patched": vuln.patched_version,
+                "remediation": vuln.remediation_status or "Open"
+            }))
+
+        findings_section = GenericSection(title="Vulnerabilities", content="", tables=[vuln_table])
+        doc.sections.append(findings_section)
+
         # 8. Detailed Vulnerability Analysis Section
         intelligence_results = VulnerabilityIntelligenceAnalyzer().analyze(data)
         if intelligence_results:
@@ -344,7 +303,7 @@ class ReportDocument(BaseModel):
                     })
                 )
 
-            vuln_table = DataTable(
+            vuln_intel_table = DataTable(
                 title="Detailed Findings",
                 headers=[
                     TableHeader(label="Vulnerability", key="vulnerability"),
@@ -367,30 +326,100 @@ class ReportDocument(BaseModel):
                     "indicates a lack of offline snapshot evidence and is left UNKNOWN "
                     "to prevent fabricated claims."
                 ),
-                tables=[vuln_table]
+                tables=[vuln_intel_table]
             )
             doc.sections.append(intel_section)
 
-        # 9. Upgrade Validation Matrix & Rollback Plan
+        # 9. Upgrade Analysis & Code Impact Sections
+        for dep in data.dependencies:
+            if not dep.upgrade_analysis:
+                continue
+            ua = dep.upgrade_analysis
+            content_lines = [f"Dependency: {dep.package_name}"]
+            if ua.minimum_fixed_version:
+                content_lines.append(f"Minimum fixed version: {ua.minimum_fixed_version}")
+            if ua.recommended_version:
+                content_lines.append(f"Recommended version: {ua.recommended_version}")
+            if ua.latest_known_version:
+                content_lines.append(f"Latest known version: {ua.latest_known_version}")
+            if ua.manual_review_required:
+                content_lines.append("MANUAL REVIEW REQUIRED for this upgrade.")
+            if ua.exact_upgrade_command:
+                content_lines.append(f"Command: {ua.exact_upgrade_command}")
+
+            ua_metrics = []
+            if ua.upgrade_risk:
+                ua_metrics.append(MetricCard(label="Upgrade Risk", value=ua.upgrade_risk, severity_class="high" if ua.upgrade_risk in ["HIGH", "CRITICAL"] else "medium" if ua.upgrade_risk == "MEDIUM" else "low"))
+            if ua.security_benefit:
+                ua_metrics.append(MetricCard(label="Security Benefit", value=ua.security_benefit, severity_class="success"))
+            if ua.compatibility_risk:
+                ua_metrics.append(MetricCard(label="Compatibility Risk", value=ua.compatibility_risk, severity_class="danger" if ua.compatibility_risk in ["HIGH", "CRITICAL"] else "warning" if ua.compatibility_risk == "MEDIUM" else "success"))
+
+            ua_tables = []
+            if ua.breaking_changes:
+                bc_table = DataTable(
+                    title="Breaking Changes",
+                    headers=[TableHeader(label="Category", key="category"), TableHeader(label="Impact", key="impact"), TableHeader(label="Description", key="description")],
+                    rows=[TableRow(cells={"category": bc.category, "impact": bc.impact, "description": bc.description}) for bc in ua.breaking_changes]
+                )
+                ua_tables.append(bc_table)
+
+            if ua.code_impacts:
+                ci_table = DataTable(
+                    title="Source Code Impact",
+                    headers=[TableHeader(label="File", key="file"), TableHeader(label="Line", key="line"), TableHeader(label="Risk", key="risk"), TableHeader(label="Recommendation", key="recommendation")],
+                    rows=[TableRow(cells={"file": ci.file_path, "line": str(ci.line_number or ""), "risk": ci.risk, "recommendation": ci.recommendation}) for ci in ua.code_impacts]
+                )
+                ua_tables.append(ci_table)
+
+            if ua.failure_risks:
+                fr_table = DataTable(
+                    title="Potential Failure Risks",
+                    headers=[TableHeader(label="Scenario", key="scenario"), TableHeader(label="Risk", key="risk"), TableHeader(label="Prevention", key="prevention")],
+                    rows=[TableRow(cells={"scenario": fr.scenario, "risk": fr.risk, "prevention": fr.prevention}) for fr in ua.failure_risks]
+                )
+                ua_tables.append(fr_table)
+
+            ua_section = GenericSection(
+                title=f"Upgrade Analysis: {dep.package_name}",
+                content="\n".join(content_lines),
+                metrics=ua_metrics,
+                tables=ua_tables
+            )
+            doc.sections.append(ua_section)
+
+        # 10. Safe Upgrade Plan Section
+        if data.safe_upgrade_plan:
+            plan = data.safe_upgrade_plan
+            content_lines = ["Follow this safe upgrade procedure:"]
+            if plan.before_upgrade:
+                content_lines.append("\nBEFORE UPGRADE:")
+                content_lines.extend([f"- {step}" for step in plan.before_upgrade])
+            if plan.during_upgrade:
+                content_lines.append("\nDURING UPGRADE:")
+                content_lines.extend([f"- {step}" for step in plan.during_upgrade])
+            if plan.after_upgrade:
+                content_lines.append("\nAFTER UPGRADE:")
+                content_lines.extend([f"- {step}" for step in plan.after_upgrade])
+
+            plan_section = GenericSection(
+                title="Safe Upgrade Plan",
+                content="\n".join(content_lines)
+            )
+            doc.sections.append(plan_section)
+
+        # 11. Upgrade Validation Matrix & Rollback Plan
         validation_results = UpgradeValidationAnalyzer().analyze(data)
         if validation_results:
-            # We construct three sections: A, B, and C as requested
-
-            # A. Pre-Upgrade Checklist
             checklist_content = []
             for res in validation_results:
                 checklist_content.append(f"### {res.package_name}")
                 for item in res.pre_upgrade_checklist:
                     checklist_content.append(f"- [ ] {item}")
                 checklist_content.append("")
-
-            pre_upgrade_section = GenericSection(
-                title="A. Pre-Upgrade Checklist",
-                content="\n".join(checklist_content)
-            )
+            pre_upgrade_section = GenericSection(title="A. Pre-Upgrade Checklist", content="\n".join(checklist_content))
             doc.sections.append(pre_upgrade_section)
 
-            # B. Upgrade & Rollback Plan
             rollback_content = []
             for res in validation_results:
                 rollback_content.append(f"### {res.package_name}")
@@ -403,26 +432,17 @@ class ReportDocument(BaseModel):
                 for step in res.rollback_plan.verification_steps:
                     rollback_content.append(f"- {step}")
                 rollback_content.append("")
-
-            rollback_section = GenericSection(
-                title="B. Upgrade & Rollback Plan",
-                content="\n".join(rollback_content)
-            )
+            rollback_section = GenericSection(title="B. Upgrade & Rollback Plan", content="\n".join(rollback_content))
             doc.sections.append(rollback_section)
 
-            # C. Post-Upgrade Validation Matrix
             matrix_tables = []
             for res in validation_results:
                 matrix_rows = []
                 for val in res.validations:
-                    matrix_rows.append(
-                        TableRow(cells={
-                            "category": val.category,
-                            "expected_result": val.expected_result,
-                            "status": val.status,
-                            "evidence": val.evidence_source
-                        })
-                    )
+                    matrix_rows.append(TableRow(cells={
+                        "category": val.category, "expected_result": val.expected_result,
+                        "status": val.status, "evidence": val.evidence_source
+                    }))
                 matrix_table = DataTable(
                     title=f"Validation Matrix: {res.package_name}",
                     headers=[
@@ -434,7 +454,6 @@ class ReportDocument(BaseModel):
                     rows=matrix_rows
                 )
                 matrix_tables.append(matrix_table)
-
             matrix_section = GenericSection(
                 title="C. Post-Upgrade Validation Matrix",
                 content="This matrix tracks post-upgrade validation status based on available snapshot evidence. Default status is NOT VERIFIED.",
@@ -442,7 +461,22 @@ class ReportDocument(BaseModel):
             )
             doc.sections.append(matrix_section)
 
-        # 10. Limitations / Data Availability
+        # 12. Methodology & Data Sources
+        methodology_content = [
+            f"**Snapshot Schema Version:** {metadata.document_schema_version}",
+            f"**Generator Version:** {metadata.generator_version}",
+            f"**Snapshot Checksum:** {metadata.snapshot_sha256}",
+            "**Analysis Approach:** Offline, read-only analysis of frozen snapshot data.",
+            "This report generation operates solely on the provided snapshot data. "
+            "No live network calls, DB queries, or package-manager executions occurred during this generation."
+        ]
+        methodology_section = GenericSection(
+            title="Methodology & Data Sources",
+            content="\n".join(methodology_content)
+        )
+        doc.sections.append(methodology_section)
+
+        # 13. Limitations / Data Availability
         limitations = []
         if data.summary.unknown_packages > 0:
             limitations.append(f"{data.summary.unknown_packages} packages have an unknown registry status.")
@@ -454,5 +488,31 @@ class ReportDocument(BaseModel):
             content=limitations_content
         )
         doc.sections.append(limitations_section)
+
+        # 14. Final Recommendation
+        recommendation_parts = []
+
+        if high_compatibility_risks > 0 or high_failure_risks > 0:
+            recommendation_parts.append("Manual review required. High compatibility or application failure risk detected. Do not automate upgrades. Follow all rollback verifications.")
+        elif manual_reviews > 0:
+            recommendation_parts.append("Manual review required. Automated upgrade paths are unavailable or require human verification.")
+
+        if len(fixes_available) > 0:
+            recommendation_parts.append("Actionable upgrade paths exist. Proceed cautiously with Safe Upgrade Plan.")
+
+        if still_present_count > 0:
+            recommendation_parts.append("Verified still-present vulnerabilities detected. The finding remains present in the available follow-up evidence.")
+
+        if no_follow_up_count > 0:
+            recommendation_parts.append("Follow-up security validation required. Snapshot indicates no follow-up scan has verified remediation.")
+
+        if not recommendation_parts:
+            recommendation_parts.append("No actionable security upgrades identified in this snapshot.")
+
+        final_recommendation_section = GenericSection(
+            title="Final Recommendation",
+            content="\n\n".join(recommendation_parts)
+        )
+        doc.sections.append(final_recommendation_section)
 
         return doc
