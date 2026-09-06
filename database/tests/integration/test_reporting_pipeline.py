@@ -246,7 +246,11 @@ async def test_cross_format_golden(complex_snapshot_data):
 
     # JSON Verification
     j_obj = json.loads(j_bytes.decode('utf-8'))
-    j_metrics = {m["label"]: m["value"] for m in j_obj["sections"][0]["metrics"]}
+    executive_summary = next(
+        section for section in j_obj["sections"]
+        if section["title"] == "Executive Summary"
+    )
+    j_metrics = {m["label"]: m["value"] for m in executive_summary["metrics"]}
     assert j_metrics['Total Packages'] == '1'
     assert j_metrics['Vulnerable Packages'] == '1'
     assert j_metrics['Total Findings'] == '25'
