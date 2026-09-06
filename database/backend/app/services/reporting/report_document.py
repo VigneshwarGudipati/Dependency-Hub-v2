@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 from app.services.reporting.report_data import ReportData
 from app.services.reporting.analyzer.dependency_tree_analyzer import DependencyTreeAnalyzer
+from app.services.reporting.analyzer.vulnerability_intelligence_analyzer import VulnerabilityIntelligenceAnalyzer
 
 class ReportDocumentMetadata(BaseModel):
     document_schema_version: str = "1.0.0"
@@ -325,7 +326,51 @@ class ReportDocument(BaseModel):
         )
         doc.sections.append(sbom_section)
 
-        # 8. Limitations / Data Availability
+        # 8. Detailed Vulnerability Analysis Section
+        intelligence_results = VulnerabilityIntelligenceAnalyzer().analyze(data)
+        if intelligence_results:
+            vuln_rows = []
+            for res in intelligence_results:
+                vuln_rows.append(
+                    TableRow(cells={
+                        "vulnerability": f"{res.vulnerability_id} ({res.severity})",
+                        "package": f"{res.package_name}@{res.installed_version}",
+                        "recommended_fix": res.recommended_version if res.is_fix_available else "UNKNOWN",
+                        "compatibility_risk": res.compatibility_risk_summary,
+                        "source_impact": res.source_impact_summary,
+                        "failure_risk": res.failure_risk_summary,
+                        "remediation_status": res.remediation_status,
+                    })
+                )
+
+            vuln_table = DataTable(
+                title="Detailed Findings",
+                headers=[
+                    TableHeader(label="Vulnerability", key="vulnerability"),
+                    TableHeader(label="Package", key="package"),
+                    TableHeader(label="Recommended Fix", key="recommended_fix"),
+                    TableHeader(label="Compatibility Risk", key="compatibility_risk"),
+                    TableHeader(label="Source Impact", key="source_impact"),
+                    TableHeader(label="Failure Risk", key="failure_risk"),
+                    TableHeader(label="Remediation Status", key="remediation_status"),
+                ],
+                rows=vuln_rows
+            )
+
+            intel_section = GenericSection(
+                title="Detailed Vulnerability Analysis",
+                content=(
+                    "This section synthesizes verified security evidence, fix availability, "
+                    "and projected upgrade risks. It maps dependency-level upgrade "
+                    "evidence down to the specific vulnerability context. Missing data "
+                    "indicates a lack of offline snapshot evidence and is left UNKNOWN "
+                    "to prevent fabricated claims."
+                ),
+                tables=[vuln_table]
+            )
+            doc.sections.append(intel_section)
+
+        # 9. Limitations / Data Availability
         limitations = []
         if data.summary.unknown_packages > 0:
             limitations.append(f"{data.summary.unknown_packages} packages have an unknown registry status.")
