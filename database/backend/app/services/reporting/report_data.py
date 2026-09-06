@@ -108,6 +108,13 @@ class ReportSafeUpgradePlan(BaseModel):
     during_upgrade: List[str] = Field(default_factory=list)
     after_upgrade: List[str] = Field(default_factory=list)
 
+class ReportEdgeData(BaseModel):
+    """A single dependency graph edge from the snapshot. Read-only."""
+    parent_id: str
+    child_id: str
+    relationship_type: str
+    depth: int = 1
+
 class ReportData(BaseModel):
     """
     Strict, normalized representation of the historical ReportSnapshot.
@@ -120,6 +127,7 @@ class ReportData(BaseModel):
     dependencies: List[ReportDependencyData]
     vulnerabilities: List[ReportVulnerabilityData]
     safe_upgrade_plan: Optional[ReportSafeUpgradePlan] = None
+    edges: List[ReportEdgeData] = Field(default_factory=list)
 
     @classmethod
     def from_snapshot(cls, snapshot_data: Dict[str, Any]) -> "ReportData":
@@ -135,7 +143,7 @@ class ReportData(BaseModel):
 
         # Enforce schema version compatibility here in the future if multiple schemas exist
         schema_version = metadata.get("schema_version")
-        if schema_version != "1.0.0":
+        if schema_version not in ("1.0.0", "1.1.0"):
             raise ValueError(f"UNSUPPORTED_SCHEMA_VERSION: {schema_version}")
 
         # Derive exact outdated/unknown counts locally to avoid relying on implicit snapshot gaps
@@ -161,5 +169,6 @@ class ReportData(BaseModel):
             summary=payload_summary,
             dependencies=payload.get("dependencies", []),
             vulnerabilities=payload.get("vulnerabilities", []),
-            safe_upgrade_plan=payload.get("safe_upgrade_plan")
+            safe_upgrade_plan=payload.get("safe_upgrade_plan"),
+            edges=payload.get("edges", []),
         )

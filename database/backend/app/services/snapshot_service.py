@@ -41,7 +41,7 @@ class SnapshotRaceRecoveryError(SnapshotGenerationError):
 class SnapshotService:
     """Service to generate deterministic, immutable snapshots of scan data for reports."""
 
-    SCHEMA_VERSION = "1.0.0"
+    SCHEMA_VERSION = "1.1.0"
     GENERATOR_VERSION = "1.0.0"
 
     @staticmethod
@@ -157,7 +157,24 @@ class SnapshotService:
                 }
             },
             "dependencies": dependencies_payload,
-            "vulnerabilities": vulnerabilities_payload
+            "vulnerabilities": vulnerabilities_payload,
+            "edges": [
+                {
+                    "parent_id": str(edge.parent_dependency_id),
+                    "child_id": str(edge.child_dependency_id),
+                    "relationship_type": edge.relationship_type.name if hasattr(edge.relationship_type, 'name') else str(edge.relationship_type),
+                    "depth": edge.depth if edge.depth is not None else 1,
+                }
+                for edge in sorted(
+                    scan.dependency_edges,
+                    key=lambda e: (
+                        str(e.parent_dependency_id),
+                        str(e.child_dependency_id),
+                        e.relationship_type.name if hasattr(e.relationship_type, 'name') else str(e.relationship_type),
+                        e.depth if e.depth is not None else 1,
+                    )
+                )
+            ]
         }
         return payload
 
@@ -210,7 +227,8 @@ class SnapshotService:
         scan_stmt = select(Scan).options(
             selectinload(Scan.project),
             selectinload(Scan.dependencies).selectinload(Dependency.ecosystem),
-            selectinload(Scan.vulnerability_findings).joinedload(DependencyVulnerability.vulnerability)
+            selectinload(Scan.vulnerability_findings).joinedload(DependencyVulnerability.vulnerability),
+            selectinload(Scan.dependency_edges)
         ).filter(Scan.id == report.scan_id)
         scan_result = await db.execute(scan_stmt)
         scan = scan_result.scalar_one()
