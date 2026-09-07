@@ -23,6 +23,32 @@ from app.models import (
 )
 
 
+@pytest.fixture(autouse=True)
+def cleanup_test_artifacts():
+    """Ensure artifacts created during the test are removed."""
+    from pathlib import Path
+    storage_dir = Path(settings.STORAGE_DIR)
+
+    # Snapshot before test
+    files_before = set()
+    if storage_dir.exists():
+        files_before = {f for f in storage_dir.rglob('*') if f.is_file()}
+
+    yield
+
+    # Cleanup after test
+    if storage_dir.exists():
+        files_after = {f for f in storage_dir.rglob('*') if f.is_file()}
+        new_files = files_after - files_before
+        for new_file in new_files:
+            try:
+                new_file.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError as e:
+                # Cleanup failures must not be silently swallowed
+                raise RuntimeError(f"Failed to cleanup test storage file {new_file}") from e
+
 @pytest_asyncio.fixture(scope="function")
 async def test_engine():
     """Create a clean async engine with NullPool per test."""

@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.models.organization import OrganizationMember
     from app.models.refresh_token import RefreshToken
     from app.models.audit import AuditLog
+    from app.models.report import Report
 
 
 class User(Base, PrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
@@ -68,6 +69,11 @@ class User(Base, PrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
         "AuditLog",
         back_populates="user",
         foreign_keys="AuditLog.user_id",
+    )
+    generated_reports: Mapped[List["Report"]] = relationship(
+        "Report",
+        foreign_keys="Report.created_by",
+        back_populates="creator",
     )
 
     __table_args__ = (

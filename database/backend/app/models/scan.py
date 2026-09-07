@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from app.models.dependency import Dependency, DependencyEdge
     from app.models.vulnerability import DependencyVulnerability
     from app.models.finding import Finding
+    from app.models.report import Report
 
 
 class ScanType(str, enum.Enum):
@@ -163,6 +164,10 @@ class Scan(Base, PrimaryKeyMixin, TimestampMixin):
     )
     findings: Mapped[List["Finding"]] = relationship(
         "Finding",
+        back_populates="scan",
+    )
+    reports: Mapped[List["Report"]] = relationship(
+        "Report",
         back_populates="scan",
     )
 

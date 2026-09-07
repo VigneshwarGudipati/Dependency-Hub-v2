@@ -161,3 +161,50 @@ def test_get_project_graph(client):
     assert "edges" in data
     assert len(data["nodes"]) >= 2 # root + at least 1 dependency
     assert len(data["edges"]) >= 1
+
+
+def test_list_scans(client):
+    """Test listing scans for a project."""
+    token = _register_and_login(client)
+    project = _create_project(client, token)
+    artifact = _create_artifact(client, token, project["id"])
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Empty project
+    resp = client.get(f"/api/v1/projects/{project['id']}/scans", headers=headers)
+    assert resp.status_code == 200
+    assert len(resp.json()) == 0
+
+    # 2. Create multiple scans
+    payload = {"artifact_id": artifact["id"], "scan_type": "FULL"}
+    for _ in range(3):
+        client.post(
+            f"/api/v1/projects/{project['id']}/scans",
+            headers=headers,
+            json=payload
+        )
+        time.sleep(0.1)  # Ensure different created_at
+
+    # 3. List scans with pagination
+    resp = client.get(f"/api/v1/projects/{project['id']}/scans?limit=2", headers=headers)
+    assert resp.status_code == 200
+    scans = resp.json()
+    assert len(scans) == 2
+
+    # Check stable ordering (newest first)
+    assert scans[0]["created_at"] >= scans[1]["created_at"]
+
+    # 4. Filter by status
+    resp = client.get(f"/api/v1/projects/{project['id']}/scans?status=QUEUED", headers=headers)
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+    # 5. Cross-tenant access denied
+    token2 = _register_and_login(client)
+    headers2 = {"Authorization": f"Bearer {token2}"}
+    resp2 = client.get(f"/api/v1/projects/{project['id']}/scans", headers=headers2)
+    assert resp2.status_code == 404
+
+    # 6. Unauthorized
+    resp3 = client.get(f"/api/v1/projects/{project['id']}/scans")
+    assert resp3.status_code == 401

@@ -67,3 +67,23 @@ async def get_scan(
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return scan
+
+
+async def list_scans(
+    db: AsyncSession,
+    project_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+    status: str | None = None
+) -> list[Scan]:
+    """List scans for a project with pagination and optional status filter."""
+    stmt = select(Scan).where(Scan.project_id == project_id)
+
+    if status:
+        stmt = stmt.where(Scan.status == status)
+
+    stmt = stmt.order_by(Scan.created_at.desc())
+    stmt = stmt.offset(skip).limit(limit)
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())

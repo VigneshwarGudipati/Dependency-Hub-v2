@@ -107,6 +107,24 @@ async def create_scan(
 
 
 @router.get(
+    "/{project_id}/scans",
+    response_model=List[ScanResponse],
+    dependencies=[Depends(require_permission("scan.read"))]
+)
+async def list_scans(
+    project_id: uuid.UUID,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    status: Optional[str] = Query(None, description="Filter by scan status"),
+    organization_id: uuid.UUID = Depends(get_current_organization_id),
+    db: AsyncSession = Depends(get_db)
+):
+    """List scans for a specific project."""
+    await project_service.get_project(db, project_id, organization_id)
+    return await scan_service.list_scans(db, project_id, skip, limit, status)
+
+
+@router.get(
     "/{project_id}/scans/{scan_id}",
     response_model=ScanResponse,
     dependencies=[Depends(require_permission("scan.read"))]
