@@ -126,7 +126,7 @@ export const API_ROUTES = {
   me: "/auth/me",
   verifyOtp: "/auth/verify-otp",
   forgotPassword: "/auth/forgot-password",
-  dashboard: "/dashboard/summary",
+  dashboard: (projectId: string) => `/projects/${projectId}/dashboard/summary`,
   repositories: "/projects",
   repository: (id: string) => `/projects/${id}`,
   artifacts: (id: string) => `/projects/${id}/artifacts`,
@@ -134,10 +134,10 @@ export const API_ROUTES = {
   scanStatus: (projectId: string, scanId: string) => `/projects/${projectId}/scans/${scanId}`,
   scans: (projectId: string) => `/projects/${projectId}/scans`,
   graph: (id: string) => `/projects/${id}/graph`,
-  vulnerabilities: "/vulnerabilities",
-  packages: "/dependencies",
+  vulnerabilities: (projectId: string) => `/projects/${projectId}/vulnerabilities`,
+  packages: (projectId: string) => `/projects/${projectId}/dependencies`,
   package: (id: string) => `/dependencies/${id}`,
-  reports: "/reports",
+  reports: (projectId: string) => `/projects/${projectId}/reports`,
   projectReports: (projectId: string) => `/projects/${projectId}/reports`,
   projectReport: (projectId: string, reportId: string) =>
     `/projects/${projectId}/reports/${reportId}`,
@@ -147,5 +147,4 @@ export const API_ROUTES = {
     `/projects/${projectId}/reports/${reportId}/download`,
   users: "/members",
   systemHealth: "/system/health",
-  auditLogs: "/audit-logs",
 } as const;

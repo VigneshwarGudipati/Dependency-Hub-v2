@@ -38,7 +38,7 @@ export function AppSidebar({ mobileOpen, onClose }: AppSidebarProps) {
               {section.title}
             </p>
             <ul className="space-y-1">
-              {section.items.map((item) => {
+              {section.items.filter(item => item.to !== "/audit-logs").map((item) => {
                 const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
                 return (
                   <li key={item.to}>

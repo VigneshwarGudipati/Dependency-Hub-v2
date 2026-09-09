@@ -7,7 +7,7 @@ from app.models.scan import ScanType, ScanStatus
 
 
 class ScanCreate(BaseModel):
-    artifact_id: uuid.UUID
+    artifact_id: Optional[uuid.UUID] = None
     scan_type: ScanType = ScanType.FULL
     configuration: Dict[str, Any] = {}
 

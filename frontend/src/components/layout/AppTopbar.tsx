@@ -1,13 +1,22 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, Menu, Moon, Plus, Search, Sun } from "lucide-react";
+import { Menu, Moon, Plus, Search, Sun, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
+import { useActiveProject } from "@/hooks/useActiveProject";
 
 export function AppTopbar({ onOpenNav }: { onOpenNav: () => void }) {
   const { theme, toggle } = useTheme();
   const { data: user } = useAuth();
+  const { activeProjectId, setActiveProject, projects, isLoading } = useActiveProject();
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
@@ -20,13 +29,35 @@ export function AppTopbar({ onOpenNav }: { onOpenNav: () => void }) {
         >
           <Menu className="size-4" />
         </button>
-        <div className="relative hidden min-w-0 md:block">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search repositories, packages or CVEs…"
-            aria-label="Global search"
-            className="max-w-md pl-9"
-          />
+        <div className="relative hidden min-w-0 md:flex items-center gap-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search packages or CVEs…"
+              aria-label="Global search"
+              className="w-[280px] pl-9"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <LayoutGrid className="size-4 text-muted-foreground" />
+            <Select
+              value={activeProjectId ?? undefined}
+              onValueChange={setActiveProject}
+              disabled={isLoading || !projects || projects.length === 0}
+            >
+              <SelectTrigger className="w-[220px] h-9 border-border bg-background/50">
+                <SelectValue placeholder={isLoading ? "Loading projects..." : "Select active project..."} />
+              </SelectTrigger>
+              <SelectContent>
+                {projects?.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="md:hidden" />
         <div className="flex shrink-0 items-center gap-2">
@@ -44,15 +75,8 @@ export function AppTopbar({ onOpenNav }: { onOpenNav: () => void }) {
             {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </button>
           <Link
-            to="/audit-logs"
-            aria-label="Notifications (Deferred)"
-            className="relative grid size-9 place-items-center rounded-lg border border-border hover:bg-muted"
-          >
-            <Bell className="size-4" />
-          </Link>
-          <Link
             to="/settings"
-            className="flex items-center gap-2 rounded-lg border border-border py-1 pl-1 pr-3 hover:bg-muted"
+            className="flex items-center gap-2 rounded-lg border border-border py-1 pl-1 pr-3 hover:bg-muted ml-2"
           >
             <span className="grid size-7 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
               {user?.full_name

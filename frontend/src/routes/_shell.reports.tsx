@@ -26,6 +26,7 @@ import {
   type ReportStatus,
   type ReportType,
 } from "@/hooks/useReports";
+import { useActiveProject } from "@/hooks/useActiveProject";
 import { formatDateTime } from "@/utils/format";
 import { cn } from "@/lib/utils";
 
@@ -220,26 +221,26 @@ function ReportRowActions({ report }: { report: Report }) {
 // ---------------------------------------------------------------------------
 
 function ReportsPage() {
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const { activeProjectId, setActiveProject, isLoading: isProjectLoading, activeProject } = useActiveProject();
   const [selectedScanId, setSelectedScanId] = useState<string>("");
   const [reportType, setReportType] = useState<ReportType>("SECURITY_REPORT");
   const [reportFormat, setReportFormat] = useState<ReportFormat>("PDF");
 
   const projectsQuery = useProjects();
-  const scansQuery = useProjectScans(selectedProjectId || null);
-  const reportsQuery = useProjectReports(selectedProjectId || null);
+  const scansQuery = useProjectScans(activeProjectId || null);
+  const reportsQuery = useProjectReports(activeProjectId || null);
 
-  const generateMutation = useGenerateReport(selectedProjectId);
+  const generateMutation = useGenerateReport(activeProjectId || "");
 
   const projects = projectsQuery.data ?? [];
   const allScans = scansQuery.data ?? [];
   const completedScans = allScans.filter((s) => s.status === "COMPLETED");
   const reports = reportsQuery.data ?? [];
 
-  const canGenerate = !!selectedProjectId && !!selectedScanId && !generateMutation.isPending;
+  const canGenerate = !!activeProjectId && !!selectedScanId && !generateMutation.isPending;
 
   const handleProjectChange = (id: string) => {
-    setSelectedProjectId(id);
+    setActiveProject(id);
     setSelectedScanId(""); // reset scan when project changes
   };
 
@@ -289,7 +290,7 @@ function ReportsPage() {
             ) : projects.length === 0 ? (
               <p className="text-sm text-muted-foreground">No repositories found.</p>
             ) : (
-              <Select value={selectedProjectId} onValueChange={handleProjectChange}>
+              <Select value={activeProjectId || ""} onValueChange={handleProjectChange}>
                 <SelectTrigger id="report-repository-select">
                   <SelectValue placeholder="Select repository…" />
                 </SelectTrigger>
@@ -309,18 +310,18 @@ function ReportsPage() {
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Scan
             </label>
-            {scansQuery.isLoading && selectedProjectId ? (
+            {scansQuery.isLoading && activeProjectId ? (
               <div className="shimmer h-9 rounded-md bg-muted" />
             ) : (
               <Select
                 value={selectedScanId}
                 onValueChange={setSelectedScanId}
-                disabled={!selectedProjectId || completedScans.length === 0}
+                disabled={!activeProjectId || completedScans.length === 0}
               >
                 <SelectTrigger id="report-scan-select">
                   <SelectValue
                     placeholder={
-                      !selectedProjectId
+                      !activeProjectId
                         ? "Select repository first"
                         : completedScans.length === 0
                           ? "No completed scans"
@@ -396,10 +397,10 @@ function ReportsPage() {
             )}
             {generateMutation.isPending ? "Queuing…" : "Generate report"}
           </Button>
-          {!selectedProjectId && (
+          {!activeProjectId && (
             <p className="text-xs text-muted-foreground">Select a repository to continue.</p>
           )}
-          {selectedProjectId &&
+          {activeProjectId &&
             !selectedScanId &&
             completedScans.length === 0 &&
             !scansQuery.isLoading && (
@@ -417,8 +418,8 @@ function ReportsPage() {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-semibold">
             Report history
-            {selectedProjectId
-              ? ` · ${projects.find((p) => p.id === selectedProjectId)?.name ?? ""}`
+            {activeProjectId
+              ? ` · ${projects.find((p) => p.id === activeProjectId)?.name ?? ""}`
               : ""}
           </h2>
           {reportsQuery.isFetching && (
@@ -428,7 +429,7 @@ function ReportsPage() {
           )}
         </div>
 
-        {!selectedProjectId ? (
+        {!activeProjectId ? (
           <EmptyState
             icon={FileBarChart}
             title="Select a repository"

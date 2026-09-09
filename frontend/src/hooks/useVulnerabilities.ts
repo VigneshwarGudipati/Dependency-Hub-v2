@@ -18,6 +18,8 @@ export function useVulnerabilities(params: UseVulnerabilitiesParams) {
     queryFn: async (): Promise<PaginatedResponse<Vulnerability>> => {
       const { page = 1, pageSize = 25, query, severity, projectId } = params;
 
+      if (!projectId) throw new Error("Project ID is required");
+
       const searchParams = new URLSearchParams({
         page: page.toString(),
         page_size: pageSize.toString(),
@@ -25,13 +27,12 @@ export function useVulnerabilities(params: UseVulnerabilitiesParams) {
 
       if (query) searchParams.append("query", query);
       if (severity && severity !== "all") searchParams.append("severity", severity);
-      if (projectId) searchParams.append("project_id", projectId);
 
       const response = await apiClient.get(
-        `${API_ROUTES.vulnerabilities}?${searchParams.toString()}`,
+        `${API_ROUTES.vulnerabilities(projectId)}?${searchParams.toString()}`,
       );
       return response.data;
     },
-    enabled: !!token,
+    enabled: !!token && !!params.projectId,
   });
 }

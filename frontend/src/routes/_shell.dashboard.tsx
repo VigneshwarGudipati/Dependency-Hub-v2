@@ -15,9 +15,10 @@ import { BreakdownPieChart, SeverityBarChart, TrendAreaChart } from "@/component
 import { HealthRing } from "@/components/common/HealthRing";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
-import { CardSkeleton, ErrorState, StatSkeletonGrid } from "@/components/common/States";
+import { CardSkeleton, ErrorState, StatSkeletonGrid, EmptyState } from "@/components/common/States";
 import { Button } from "@/components/ui/button";
 import { useDashboardSummary } from "@/hooks/useDashboard";
+import { useActiveProject } from "@/hooks/useActiveProject";
 import { downloadFile, formatCompact, timeAgo, toCsv } from "@/utils/format";
 
 export const Route = createFileRoute("/_shell/dashboard")({
@@ -48,16 +49,32 @@ const activityTone: Record<string, string> = {
 };
 
 function DashboardPage() {
-  const { data, isLoading: loading, error, refetch: reload } = useDashboardSummary();
+  const { activeProjectId, activeProject, isLoading: isProjectLoading } = useActiveProject();
+  const { data, isLoading: loading, error, refetch: reload } = useDashboardSummary(activeProjectId);
 
   const errorMessage = error instanceof Error ? error.message : "Failed to load dashboard data.";
+
+  if (!isProjectLoading && !activeProject) {
+    return (
+      <EmptyState
+        icon={FolderGit2}
+        title="No active project"
+        description="Select or create a project to view its dashboard."
+        action={
+          <Button asChild>
+            <Link to="/repositories/new">Add repository</Link>
+          </Button>
+        }
+      />
+    );
+  }
 
   return (
     <>
       <PageHeader
-        eyebrow="Overview"
+        eyebrow={activeProject ? `${activeProject.name}` : "Overview"}
         title="Dependency health dashboard"
-        description="A single view of open-source risk across every repository in your organisation."
+        description="A single view of open-source risk for this repository."
         actions={
           <>
             <Button
@@ -65,7 +82,7 @@ function DashboardPage() {
               onClick={() =>
                 data &&
                 downloadFile(
-                  "Dependency Hub-summary.csv",
+                  `${activeProject?.name ?? "Dependency Hub"}-summary.csv`,
                   toCsv(data.severityBreakdown.map((p) => ({ severity: p.label, count: p.value }))),
                   "text/csv",
                 )
@@ -83,7 +100,7 @@ function DashboardPage() {
       />
 
       {error ? <ErrorState message={errorMessage} onRetry={() => reload()} /> : null}
-      {loading || !data ? (
+      {loading || isProjectLoading || !data ? (
         <>
           <StatSkeletonGrid />
           <div className="grid gap-4 lg:grid-cols-3">
@@ -99,8 +116,7 @@ function DashboardPage() {
               label="Total dependencies"
               value={formatCompact(data.totalDependencies)}
               icon={Boxes}
-              delta={4}
-              hint="vs last month"
+              hint="N/A"
             />
             <StatCard
               index={1}
@@ -108,8 +124,7 @@ function DashboardPage() {
               value={formatCompact(data.safePackages)}
               icon={ShieldCheck}
               tone="success"
-              delta={6}
-              hint="patched this cycle"
+              hint="No historical data"
             />
             <StatCard
               index={2}
@@ -117,8 +132,7 @@ function DashboardPage() {
               value={data.vulnerablePackages}
               icon={ShieldAlert}
               tone="destructive"
-              delta={-12}
-              hint="open findings"
+              hint="N/A"
             />
             <StatCard
               index={3}
@@ -126,7 +140,7 @@ function DashboardPage() {
               value={data.meanTimeToPatch}
               icon={Timer}
               tone="warning"
-              hint={`${data.scansThisWeek} scans this week`}
+              hint="Not available"
             />
           </div>
 

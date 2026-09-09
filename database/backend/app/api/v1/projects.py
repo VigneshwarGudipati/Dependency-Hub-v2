@@ -87,6 +87,24 @@ async def upload_artifact(
     return await artifact_service.create_artifact(db, project_id, user.id, file, final_filename)
 
 
+from fastapi import UploadFile, File, Form, BackgroundTasks, HTTPException
+
+class AsyncBytesIO:
+    def __init__(self, data: bytes):
+        self._data = data
+        self._pos = 0
+
+    async def read(self, size: int = -1) -> bytes:
+        if self._pos >= len(self._data):
+            return b""
+        if size == -1:
+            chunk = self._data[self._pos:]
+            self._pos = len(self._data)
+            return chunk
+        chunk = self._data[self._pos:self._pos + size]
+        self._pos += size
+        return chunk
+
 @router.post(
     "/{project_id}/scans",
     response_model=ScanResponse,
@@ -102,8 +120,28 @@ async def create_scan(
     db: AsyncSession = Depends(get_db)
 ):
     """Trigger a new scan for a project artifact."""
+    from sqlalchemy import select
+    from app.models.project import Project
+    
+    # Verify access via service, which raises 404 if not authorized
     await project_service.get_project(db, project_id, organization_id)
+    
+    if not scan_in.artifact_id:
+        result = await db.execute(select(Project).where(Project.id == project_id))
+        db_project = result.scalar_one()
+        
+        if not db_project.repository_url:
+            raise HTTPException(status_code=400, detail="Repository URL is required when artifact_id is not provided.")
+        
+        from app.services.repository_acquisition_service import repository_acquisition_service
+        filename, content = await repository_acquisition_service.acquire_manifest(db_project.repository_url)
+        
+        mock_file = AsyncBytesIO(content)
+        artifact = await artifact_service.create_artifact(db, project_id, user.id, mock_file, filename)
+        scan_in.artifact_id = artifact.id
+
     return await scan_service.create_scan(db, project_id, user.id, scan_in, background_tasks)
+
 
 
 @router.get(

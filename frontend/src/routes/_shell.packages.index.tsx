@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Boxes } from "lucide-react";
+import { Boxes, FolderGit2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { StatusBadge } from "@/components/common/Badges";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -22,6 +22,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { useDependencies } from "@/hooks/useDependencies";
+import { useActiveProject } from "@/hooks/useActiveProject";
 import { formatCompact } from "@/utils/format";
 
 export const Route = createFileRoute("/_shell/packages/")({
@@ -43,6 +44,7 @@ export const Route = createFileRoute("/_shell/packages/")({
 });
 
 function PackagesPage() {
+  const { activeProjectId, activeProject, isLoading: isProjectLoading } = useActiveProject();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [status, setStatus] = useState("all");
@@ -66,7 +68,18 @@ function PackagesPage() {
     pageSize: 25,
     query: debouncedQuery,
     status,
+    projectId: activeProjectId || "",
   });
+
+  if (!isProjectLoading && !activeProject) {
+    return (
+      <EmptyState
+        icon={FolderGit2}
+        title="No active project"
+        description="Select or create a project to view its packages."
+      />
+    );
+  }
 
   const handleStatusChange = (newStatus: string) => {
     setStatus(newStatus);

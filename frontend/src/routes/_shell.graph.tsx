@@ -7,6 +7,7 @@ import { CardSkeleton, ErrorState } from "@/components/common/States";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { API_ROUTES, apiClient, getAccessToken } from "@/services/apiClient";
+import { useActiveProject } from "@/hooks/useActiveProject";
 import { cn } from "@/lib/utils";
 import type { GraphNode } from "@/types";
 
@@ -42,25 +43,21 @@ interface GraphData {
 
 function GraphPage() {
   const token = getAccessToken();
+  const { activeProjectId, activeProject, isLoading: isProjectLoading } = useActiveProject();
+
   const {
     data,
     isLoading: loading,
     error,
     refetch: reload,
   } = useQuery<GraphData>({
-    queryKey: ["graph", "first-project"],
+    queryKey: ["graph", activeProjectId],
     queryFn: async () => {
-      // Fetch the first available project and load its graph
-      const projectsRes = await apiClient.get(API_ROUTES.repositories);
-      if (!projectsRes.data || projectsRes.data.length === 0) {
-        return { nodes: [], edges: [] };
-      }
-      const projectId = projectsRes.data[0].id;
-      const res = await apiClient.get(API_ROUTES.graph(projectId));
+      if (!activeProjectId) return { nodes: [], edges: [] };
+      const res = await apiClient.get(API_ROUTES.graph(activeProjectId));
       return res.data;
     },
-    // SSR-safe: only fires client-side after login
-    enabled: !!token,
+    enabled: !!token && !!activeProjectId,
     staleTime: 60_000,
     retry: false,
   });
@@ -157,7 +154,9 @@ function GraphPage() {
         />
       ) : null}
 
-      {loading || !data ? (
+      {!isProjectLoading && !activeProject ? (
+        <ErrorState message="No active project. Select or create a project to view its graph." />
+      ) : loading || isProjectLoading || !data ? (
         <CardSkeleton />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">

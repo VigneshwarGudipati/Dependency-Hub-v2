@@ -18,6 +18,8 @@ export function useDependencies(params: UseDependenciesParams) {
     queryFn: async (): Promise<PaginatedResponse<DependencyPackage>> => {
       const { page = 1, pageSize = 25, query, status, projectId } = params;
 
+      if (!projectId) throw new Error("Project ID is required");
+
       const searchParams = new URLSearchParams({
         page: page.toString(),
         page_size: pageSize.toString(),
@@ -25,12 +27,11 @@ export function useDependencies(params: UseDependenciesParams) {
 
       if (query) searchParams.append("query", query);
       if (status && status !== "all") searchParams.append("status", status);
-      if (projectId) searchParams.append("project_id", projectId);
 
-      const response = await apiClient.get(`${API_ROUTES.packages}?${searchParams.toString()}`);
+      const response = await apiClient.get(`${API_ROUTES.packages(projectId)}?${searchParams.toString()}`);
       return response.data;
     },
-    enabled: !!token,
+    enabled: !!token && !!params.projectId,
   });
 }
 

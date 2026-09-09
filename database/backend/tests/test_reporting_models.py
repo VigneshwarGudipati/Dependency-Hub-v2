@@ -89,19 +89,35 @@ def test_report_data_parses_phase_b_structures():
     doc = ReportDocument.from_report_data(report_data)
     assert doc.title == "Security Dependency Report"
 
+    expected_titles = [
+        "1. Report Cover",
+        "2. Executive Summary",
+        "3. Severity Breakdown",
+        "4. Dependency Inventory",
+        "5. Dependency Tree Summary",
+        "6. Software Inventory Metadata",
+        "7. Vulnerability Findings",
+        "8. Detailed Vulnerability Analysis",
+        "9. Upgrade Analysis",
+        "10. Safe Upgrade Plan",
+        "11. Pre-Upgrade Checklist",
+        "12. Upgrade & Rollback Plan",
+        "13. Post-Upgrade Validation Matrix",
+        "14. Methodology & Data Sources",
+        "15. Limitations",
+        "16. Final Recommendation"
+    ]
+
+    actual_titles = [s.title for s in doc.sections]
+    assert actual_titles == expected_titles
+
     # Find Upgrade Analysis Section
-    ua_sections = [s for s in doc.sections if s.title.startswith("Upgrade Analysis")]
-    assert len(ua_sections) == 1
-    ua_sec = ua_sections[0]
+    ua_sec = next(s for s in doc.sections if s.title == "9. Upgrade Analysis")
 
     # Check tables in UA section
-    assert len(ua_sec.tables) == 3
-    assert ua_sec.tables[0].title == "Breaking Changes"
-    assert ua_sec.tables[1].title == "Source Code Impact"
-    assert ua_sec.tables[2].title == "Potential Failure Risks"
+    assert len(ua_sec.tables) == 1
+    assert ua_sec.tables[0].title == "Breaking Changes: axios"
 
     # Find Safe Upgrade Plan Section
-    plan_sections = [s for s in doc.sections if s.title == "Safe Upgrade Plan"]
-    assert len(plan_sections) == 1
-    plan_sec = plan_sections[0]
-    assert "BEFORE UPGRADE" in plan_sec.content
+    plan_sec = next(s for s in doc.sections if s.title == "10. Safe Upgrade Plan")
+    assert "### Pre-Check & Backup" in plan_sec.content

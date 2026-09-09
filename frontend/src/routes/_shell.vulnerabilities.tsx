@@ -27,11 +27,11 @@ import {
   Pagination,
   PaginationContent,
   PaginationItem,
-  PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { useVulnerabilities } from "@/hooks/useVulnerabilities";
+import { useActiveProject } from "@/hooks/useActiveProject";
 import { downloadFile, formatDate, toCsv } from "@/utils/format";
 import type { Severity, Vulnerability } from "@/types";
 
@@ -41,12 +41,12 @@ export const Route = createFileRoute("/_shell/vulnerabilities")({
       { title: "Vulnerabilities — Dependency Hub" },
       {
         name: "description",
-        content: "Severity-ranked CVE findings with CVSS scores and patched-version guidance.",
+        content: "Detailed CVE reports across all scanned open-source dependencies.",
       },
       { property: "og:title", content: "Vulnerabilities — Dependency Hub" },
       {
         property: "og:description",
-        content: "Severity-ranked CVE findings across your portfolio.",
+        content: "CVEs identified in open-source components.",
       },
     ],
   }),
@@ -54,6 +54,7 @@ export const Route = createFileRoute("/_shell/vulnerabilities")({
 });
 
 function VulnerabilitiesPage() {
+  const { activeProjectId, activeProject, isLoading: isProjectLoading } = useActiveProject();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [severity, setSeverity] = useState("all");
@@ -78,7 +79,18 @@ function VulnerabilitiesPage() {
     pageSize: 25,
     query: debouncedQuery,
     severity,
+    projectId: activeProjectId || "",
   });
+
+  if (!isProjectLoading && !activeProject) {
+    return (
+      <EmptyState
+        icon={FolderGit2}
+        title="No active project"
+        description="Select or create a project to view its vulnerabilities."
+      />
+    );
+  }
 
   const handleSeverityChange = (newSeverity: string) => {
     setSeverity(newSeverity);

@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, Loader2, Play, RotateCcw, Upload, FileBarChart } from "lucide-react";
+import { CheckCircle2, Loader2, Play, RotateCcw, Upload, FileBarChart, GitBranch, FileCode2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_shell/scanner")({
       { title: "Dependency Scanner — Dependency Hub" },
       {
         name: "description",
-        content: "Paste or upload a manifest and scan it for outdated and vulnerable packages.",
+        content: "Scan your repository or manual manifest for outdated and vulnerable packages.",
       },
     ],
   }),
@@ -33,20 +33,23 @@ export const Route = createFileRoute("/_shell/scanner")({
 });
 
 const samplePackageJson = `{
-  "name": "example-project",
+  "name": "my-project",
   "version": "1.0.0",
-  "dependencies": {
-    "react": "^18.2.0"
-  }
+  "dependencies": {}
 }`;
 
-const scanSteps = [
-  { id: "read", label: "Uploading artifact", detail: "Sending manifest to API" },
+const getScanSteps = (mode: "repository" | "manual") => [
+  { 
+    id: "read", 
+    label: mode === "repository" ? "Acquiring repository" : "Uploading artifact", 
+    detail: mode === "repository" ? "Cloning repository and discovering manifest" : "Sending manifest to API" 
+  },
   { id: "queue", label: "Queueing scan", detail: "Creating full dependency scan" },
   { id: "process", label: "Processing", detail: "Waiting for backend resolution" },
 ];
 
 function ScannerPage() {
+  const [scanMode, setScanMode] = useState<"repository" | "manual">("repository");
   const [manifest, setManifest] = useState(samplePackageJson);
   const [repositoryId, setRepositoryId] = useState("");
   const [running, setRunning] = useState(false);
@@ -69,7 +72,7 @@ function ScannerPage() {
   }, [repositories, repositoryId]);
 
   const startScan = async () => {
-    if (manifest.trim().length < 10) {
+    if (scanMode === "manual" && manifest.trim().length < 10) {
       toast.error("Add a manifest before scanning.");
       return;
     }
@@ -83,24 +86,37 @@ function ScannerPage() {
     setStepIndex(0);
 
     try {
-      // Step 1: Upload artifact
-      const blob = new Blob([manifest], { type: "application/json" });
-      const file = new File([blob], "package.json", { type: "application/json" });
-      const formData = new FormData();
-      formData.append("file", file);
+      let scanId;
 
-      const artifactRes = await apiClient.post(API_ROUTES.artifacts(repositoryId), formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      const artifactId = artifactRes.data.id;
-      setStepIndex(1);
+      if (scanMode === "manual") {
+        // Step 1: Upload artifact
+        const blob = new Blob([manifest], { type: "application/json" });
+        const file = new File([blob], "package.json", { type: "application/json" });
+        const formData = new FormData();
+        formData.append("file", file);
 
-      // Step 2: Create Scan
-      const scanRes = await apiClient.post(API_ROUTES.scan(repositoryId), {
-        artifact_id: artifactId,
-        scan_type: "FULL",
-      });
-      const scanId = scanRes.data.id;
+        const artifactRes = await apiClient.post(API_ROUTES.artifacts(repositoryId), formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        const artifactId = artifactRes.data.id;
+        setStepIndex(1);
+
+        // Step 2: Create Scan
+        const scanRes = await apiClient.post(API_ROUTES.scan(repositoryId), {
+          artifact_id: artifactId,
+          scan_type: "FULL",
+        });
+        scanId = scanRes.data.id;
+      } else {
+        // Repository mode
+        // Wait, "Acquiring repository" happens IN Step 1 but since the backend does it all in one API call, we just wait for POST /scans to return.
+        const scanRes = await apiClient.post(API_ROUTES.scan(repositoryId), {
+          scan_type: "FULL",
+        });
+        scanId = scanRes.data.id;
+        setStepIndex(1);
+      }
+      
       setStepIndex(2);
 
       // Step 3: Poll
@@ -128,7 +144,7 @@ function ScannerPage() {
         description: `${finalScan?.vulnerable_dependencies} vulnerable of ${finalScan?.total_dependencies} packages.`,
       });
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
+      const errorMsg = err instanceof Error ? err.message : err && typeof err === 'object' && 'response' in err ? String((err as any).response?.data?.detail || (err as any).message) : String(err);
       toast.error("Scan error", { description: errorMsg || "Failed to complete scan." });
     } finally {
       setRunning(false);
@@ -143,12 +159,14 @@ function ScannerPage() {
     });
   };
 
+  const scanSteps = getScanSteps(scanMode);
+
   return (
     <>
       <PageHeader
         eyebrow="Analysis"
         title="Dependency scanner"
-        description="Upload or paste a manifest, then resolve the tree against live advisory data."
+        description="Scan your repository or manual manifest for outdated and vulnerable packages."
         actions={
           <Button
             variant="outline"
@@ -165,41 +183,84 @@ function ScannerPage() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="surface-card p-5">
+          <div className="mb-6 flex space-x-1 rounded-lg bg-muted p-1">
+            <button
+              onClick={() => setScanMode("repository")}
+              className={cn(
+                "flex flex-1 items-center justify-center space-x-2 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                scanMode === "repository"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-background/50"
+              )}
+            >
+              <GitBranch className="size-4" />
+              <span>Repository Scan</span>
+            </button>
+            <button
+              onClick={() => setScanMode("manual")}
+              className={cn(
+                "flex flex-1 items-center justify-center space-x-2 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                scanMode === "manual"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-background/50"
+              )}
+            >
+              <FileCode2 className="size-4" />
+              <span>Manual Manifest</span>
+            </button>
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-base font-semibold">Manifest input</h2>
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".json,.txt,.lock"
-                className="hidden"
-                onChange={(event) => handleFile(event.target.files?.[0])}
+            <h2 className="text-base font-semibold">
+              {scanMode === "repository" ? "Select Repository" : "Manifest input"}
+            </h2>
+            {scanMode === "manual" && (
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".json,.txt,.lock"
+                  className="hidden"
+                  onChange={(event) => handleFile(event.target.files?.[0])}
+                />
+                <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+                  <Upload className="size-4" /> Upload file
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {scanMode === "manual" && (
+            <div
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                handleFile(event.dataTransfer.files?.[0]);
+              }}
+              className="mt-4"
+            >
+              <Textarea
+                value={manifest}
+                onChange={(event) => setManifest(event.target.value)}
+                rows={16}
+                spellCheck={false}
+                aria-label="Dependency manifest"
+                className="font-mono text-xs"
               />
-              <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-                <Upload className="size-4" /> Upload file
-              </Button>
             </div>
-          </div>
+          )}
 
-          <div
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              handleFile(event.dataTransfer.files?.[0]);
-            }}
-            className="mt-4"
-          >
-            <Textarea
-              value={manifest}
-              onChange={(event) => setManifest(event.target.value)}
-              rows={16}
-              spellCheck={false}
-              aria-label="Dependency manifest"
-              className="font-mono text-xs"
-            />
-          </div>
+          {scanMode === "repository" && (
+            <div className="mt-4 rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+              <p>
+                In Repository Scan mode, Dependency Hub will securely acquire the selected repository, 
+                discover the root manifest (e.g. package.json or requirements.txt), and generate a fresh 
+                scan artifact directly from the actual source.
+              </p>
+            </div>
+          )}
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-4">
             <Select value={repositoryId} onValueChange={setRepositoryId}>
               <SelectTrigger className="w-56">
                 <SelectValue placeholder="Repository" />
