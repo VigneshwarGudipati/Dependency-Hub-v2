@@ -14,13 +14,12 @@ from app.models.audit import AuditLog
 from app.models.scan import Scan, ScanStatus
 from app.schemas.dashboard import DashboardSummary, SeriesPoint, ActivityItem
 
-async def get_dashboard_summary(db: AsyncSession, organization_id: uuid.UUID) -> DashboardSummary:
-    """Get the dashboard summary metrics for the given organization."""
+async def get_dashboard_summary(db: AsyncSession, organization_id: uuid.UUID, project_id: uuid.UUID) -> DashboardSummary:
+    """Get the dashboard summary metrics for the given project."""
     
     # 1. Tenant scoped base query criteria
-    # Find all project IDs for this organization
-    proj_stmt = select(Project.id).where(Project.organization_id == organization_id)
-    project_ids = (await db.execute(proj_stmt)).scalars().all()
+    # Use the specific project ID
+    project_ids = [project_id]
     
     if not project_ids:
         # Empty state handling

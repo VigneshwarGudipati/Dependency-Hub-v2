@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, get_current_organization_id, require_permission
 from app.schemas.dashboard import DashboardSummary
-from app.services import dashboard_service
+from app.services import dashboard_service, project_service
 
-router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+router = APIRouter(prefix="/projects/{project_id}/dashboard", tags=["Dashboard"])
 
 @router.get(
     "/summary",
@@ -16,8 +16,10 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
     dependencies=[Depends(require_permission("project.read"))]
 )
 async def get_dashboard_summary(
+    project_id: uuid.UUID,
     organization_id: uuid.UUID = Depends(get_current_organization_id),
     db: AsyncSession = Depends(get_db)
 ):
     """Get the dashboard summary metrics."""
-    return await dashboard_service.get_dashboard_summary(db, organization_id)
+    await project_service.get_project(db, project_id, organization_id)
+    return await dashboard_service.get_dashboard_summary(db, organization_id, project_id)

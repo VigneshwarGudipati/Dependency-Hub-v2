@@ -14,13 +14,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <title>{{ doc.title }} - {{ doc.project_name }}</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 40px auto; max-width: 1200px; padding: 0 20px; }
-        h1, h2, h3 { color: #111; page-break-after: avoid; break-after: avoid; page-break-inside: avoid; break-inside: avoid; }
-        .metadata { font-size: 0.9em; color: #666; margin-bottom: 2rem; border-bottom: 1px solid #eee; padding-bottom: 1rem; page-break-inside: avoid; break-inside: avoid; }
-        .section { margin-top: 3rem; page-break-inside: auto; break-inside: auto; }
-        .metric-cards { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; page-break-inside: auto; break-inside: auto; }
-        .card { padding: 1rem; border: 1px solid #ddd; border-radius: 8px; min-width: 150px; page-break-inside: avoid; break-inside: avoid; }
-        .card .label { font-size: 0.8em; text-transform: uppercase; color: #666; page-break-after: avoid; break-after: avoid; }
-        .card .value { font-size: 1.5em; font-weight: bold; margin-top: 0.5rem; page-break-before: avoid; break-before: avoid; }
+        h1, h2, h3 { color: #111; -pdf-keep-with-next: true; }
+        .metadata { font-size: 0.9em; color: #666; margin-bottom: 2rem; border-bottom: 1px solid #eee; padding-bottom: 1rem; }
+        .section { margin-top: 3rem; }
+        .metric-cards { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+        .card { padding: 1rem; border: 1px solid #ddd; border-radius: 8px; min-width: 150px; -pdf-keep-in-frame: true; }
+        .card .label { font-size: 0.8em; text-transform: uppercase; color: #666; -pdf-keep-with-next: true; }
+        .card .value { font-size: 1.5em; font-weight: bold; margin-top: 0.5rem; }
         .card.danger { border-color: #ff4d4f; background-color: #fff1f0; }
         .card.success { border-color: #52c41a; background-color: #f6ffed; }
         .card.warning { border-color: #faad14; background-color: #fffbe6; }
@@ -28,20 +28,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .card.high { border-color: #ff4d4f; background-color: #fff1f0; color: #ff4d4f; }
         .card.medium { border-color: #faad14; background-color: #fffbe6; color: #d48806; }
         .card.low { border-color: #d9d9d9; background-color: #fafafa; color: #595959; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9em; table-layout: fixed; page-break-inside: auto; break-inside: auto; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; }
-        th { background-color: #f8f9fa; font-weight: bold; page-break-inside: avoid; break-inside: avoid; }
-        tr { page-break-inside: avoid; break-inside: avoid; page-break-after: auto; break-after: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9em; table-layout: fixed; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; word-wrap: break-word; -pdf-word-wrap: CJK; }
+        th { background-color: #f8f9fa; font-weight: bold; -pdf-keep-with-next: true; }
+        tr { -pdf-keep-in-frame: true; }
         thead { display: table-header-group; }
         ul, ol { padding-left: 20px; }
-        li { page-break-inside: avoid; break-inside: avoid; margin-bottom: 0.5rem; }
-        code { background-color: #f4f4f4; padding: 2px 4px; border-radius: 4px; font-size: 0.9em; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; }
-        .markdown-content { margin-bottom: 1.5rem; page-break-inside: auto; break-inside: auto; }
+        li { margin-bottom: 0.5rem; -pdf-keep-in-frame: true; }
+        code { background-color: #f4f4f4; padding: 2px 4px; border-radius: 4px; font-size: 0.9em; word-wrap: break-word; -pdf-word-wrap: CJK; }
+        .markdown-content { margin-bottom: 1.5rem; }
         /* Keep section headings with their following content */
-        .section > h2 { page-break-after: avoid; break-after: avoid; }
-        .section > h2 + .markdown-content,
-        .section > h2 + .metric-cards,
-        .section > h2 + h3 { page-break-before: avoid; break-before: avoid; }
+        .section > h2 { -pdf-keep-with-next: true; }
         @media print {
             body { margin: 0; max-width: none; font-size: 10pt; }
         }

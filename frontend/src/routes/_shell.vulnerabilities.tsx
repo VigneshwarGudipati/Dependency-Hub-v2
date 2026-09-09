@@ -1,6 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { AlertOctagon, Download, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
+import { AlertOctagon, Download, FolderGit2, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { SeverityBadge } from "@/components/common/Badges";
 import { PageHeader } from "@/components/common/PageHeader";

@@ -34,8 +34,9 @@ def _register_and_login(client):
     return resp.json()["access_token"]
 
 def _create_project(client, token):
+    import uuid
     resp = client.post("/api/v1/projects", json={
-        "name": f"scan-repo-{int(time.time())}",
+        "name": f"scan-repo-{str(uuid.uuid4())[:8]}",
         "description": "Test repository",
         "language": "TypeScript",
         "visibility": "PRIVATE",
@@ -59,7 +60,7 @@ def test_scan_lifecycle(client):
     project = _create_project(client, token)
     artifact = _create_artifact(client, token, project["id"])
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     # Create Scan
     payload = {
         "artifact_id": artifact["id"],
@@ -75,11 +76,11 @@ def test_scan_lifecycle(client):
     scan = resp.json()
     assert scan["status"] == "QUEUED"
     assert scan["artifact_id"] == artifact["id"]
-    
+
     # Wait for background task to complete
     scan_id = scan["id"]
     completed = False
-    
+
     for _ in range(20):
         time.sleep(0.1)
         status_resp = client.get(f"/api/v1/projects/{project['id']}/scans/{scan_id}", headers=headers)
@@ -90,13 +91,13 @@ def test_scan_lifecycle(client):
             break
         elif current_status == "FAILED":
             pytest.fail("Scan failed")
-            
+
     assert completed is True
-    
+
     # Check dependencies via the scan result API
     final_scan = status_resp.json()
     assert final_scan["total_dependencies"] == 1
-    
+
     # Also we should verify the dependencies directly if we had a deps endpoint,
     # but the total_dependencies counter confirms the parser ran successfully.
 
@@ -104,13 +105,13 @@ def test_scan_tenant_isolation(client):
     """Test user cannot create a scan for another org's project."""
     token1 = _register_and_login(client)
     token2 = _register_and_login(client)
-    
+
     project1 = _create_project(client, token1)
     artifact1 = _create_artifact(client, token1, project1["id"])
-    
+
     headers2 = {"Authorization": f"Bearer {token2}"}
     payload = {"artifact_id": artifact1["id"], "scan_type": "FULL"}
-    
+
     resp = client.post(
         f"/api/v1/projects/{project1['id']}/scans",
         headers=headers2,
@@ -123,7 +124,7 @@ def test_scan_invalid_artifact(client):
     token = _register_and_login(client)
     project = _create_project(client, token)
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     payload = {"artifact_id": str(uuid.uuid4()), "scan_type": "FULL"}
     resp = client.post(
         f"/api/v1/projects/{project['id']}/scans",
@@ -138,14 +139,14 @@ def test_get_project_graph(client):
     project = _create_project(client, token)
     artifact = _create_artifact(client, token, project["id"])
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     # Run scan
     client.post(
         f"/api/v1/projects/{project['id']}/scans",
         headers=headers,
         json={"artifact_id": artifact["id"], "scan_type": "FULL"}
     )
-    
+
     # Poll for completion
     completed = False
     for _ in range(20):
@@ -154,7 +155,7 @@ def test_get_project_graph(client):
         if resp.status_code == 200 and len(resp.json()["nodes"]) > 0:
             completed = True
             break
-            
+
     assert completed is True
     data = resp.json()
     assert "nodes" in data
@@ -208,3 +209,24 @@ def test_list_scans(client):
     # 6. Unauthorized
     resp3 = client.get(f"/api/v1/projects/{project['id']}/scans")
     assert resp3.status_code == 401
+
+def test_scans_project_isolation(client):
+    """Test user cannot access scan from another project they own."""
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    proj_a = _create_project(client, token)
+    proj_b = _create_project(client, token)
+
+    artifact_a = _create_artifact(client, token, proj_a["id"])
+    scan_resp = client.post(
+        f"/api/v1/projects/{proj_a['id']}/scans",
+        headers=headers,
+        json={"artifact_id": artifact_a["id"], "scan_type": "FULL"}
+    )
+    assert scan_resp.status_code == 201
+    scan_id = scan_resp.json()["id"]
+
+    # Try to access proj A's scan using proj B's URL
+    res = client.get(f"/api/v1/projects/{proj_b['id']}/scans/{scan_id}", headers=headers)
+    assert res.status_code == 404, "Project scoping not enforced on scans"

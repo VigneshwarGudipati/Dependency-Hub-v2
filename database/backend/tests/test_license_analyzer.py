@@ -716,8 +716,8 @@ def test_report_document_inventory_columns():
     report_data = ReportData.from_snapshot(snapshot)
     doc = ReportDocument.from_report_data(report_data)
 
-    # Find dependency inventory section
-    dep_sections = [s for s in doc.sections if s.title == "Dependencies"]
+    # Find dependency inventory section (title is numbered, e.g. "4. Dependency Inventory")
+    dep_sections = [s for s in doc.sections if "Dependency Inventory" in s.title]
     assert len(dep_sections) == 1
     dep_table = dep_sections[0].tables[0]
 
@@ -731,10 +731,11 @@ def test_report_document_inventory_columns():
     react_row = next(r for r in dep_table.rows if r.cells.get("package") == "react")
     assert react_row.cells["ecosystem"] == "npm"
     assert react_row.cells["license"] == "MIT"   # raw value preserved
-    assert react_row.cells["is_direct"] == "Yes"
+    # is_direct renders as human-readable: "Direct" (True) or "Transitive" (False)
+    assert react_row.cells["is_direct"] == "Direct"
 
     # Verify row data for lodash (no license key → "UNKNOWN")
     lodash_row = next(r for r in dep_table.rows if r.cells.get("package") == "lodash")
     assert lodash_row.cells["ecosystem"] == "npm"
     assert lodash_row.cells["license"] == "UNKNOWN"   # fallback for missing key
-    assert lodash_row.cells["is_direct"] == "No"
+    assert lodash_row.cells["is_direct"] == "Transitive"

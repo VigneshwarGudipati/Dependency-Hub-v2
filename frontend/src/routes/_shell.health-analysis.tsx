@@ -76,10 +76,10 @@ function HealthAnalysisPage() {
           <section className="surface-card flex flex-col p-5 lg:col-span-2">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold">Risk trend (90 days)</h2>
-              <span className="text-xs text-muted-foreground">Mock data</span>
+              <span className="text-xs text-muted-foreground">No historical data available</span>
             </div>
             <div className="h-[350px]">
-              <TrendAreaChart data={data.historicalTrend} />
+              <TrendAreaChart data={data.trend} />
             </div>
           </section>
         </div>

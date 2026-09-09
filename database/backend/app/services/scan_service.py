@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,7 +75,7 @@ async def list_scans(
     project_id: uuid.UUID,
     skip: int = 0,
     limit: int = 100,
-    status: str | None = None
+    status: Optional[str] = None
 ) -> list[Scan]:
     """List scans for a project with pagination and optional status filter."""
     stmt = select(Scan).where(Scan.project_id == project_id)

@@ -2,6 +2,7 @@ import pytest
 import uuid
 import tempfile
 import asyncio
+import subprocess
 from pathlib import Path
 from unittest.mock import patch, MagicMock, AsyncMock
 
@@ -31,92 +32,76 @@ def test_validate_url_local_network(service):
         service._validate_url("https://mycompany.local/repo.git")
 
 @pytest.mark.asyncio
-@patch("app.services.repository_acquisition_service.asyncio.create_subprocess_exec")
-async def test_acquire_manifest_success(mock_create_subprocess, service):
-    # Mock subprocess
-    mock_process = AsyncMock()
-    mock_process.communicate.return_value = (b"", b"")
-    mock_process.returncode = 0
-    mock_create_subprocess.return_value = mock_process
+async def test_acquire_manifest_success(service):
+    """Test that a repo with a single package.json is acquired correctly."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stderr = b""
 
-    with tempfile.TemporaryDirectory() as real_temp_dir:
-        async def mock_communicate(*args, **kwargs):
-            cloned_dir_path = mock_create_subprocess.call_args[0][5]
-            Path(cloned_dir_path).mkdir(parents=True, exist_ok=True)
-            with open(Path(cloned_dir_path) / "package.json", "w") as f:
-                f.write('{"name": "test-repo"}')
-            return (b"", b"")
-                
-            mock_process.communicate = mock_communicate
-            
-            filename, content = await service.acquire_manifest("https://github.com/test/repo.git")
-            
-            assert filename == "package.json"
-            assert content == b'{"name": "test-repo"}'
+    def fake_subprocess_run(cmd, **kwargs):
+        # cmd[-1] is the destination directory
+        target_dir = Path(cmd[-1])
+        target_dir.mkdir(parents=True, exist_ok=True)
+        (target_dir / "package.json").write_text('{"name": "test-repo"}')
+        return mock_result
+
+    with patch.object(subprocess, "run", side_effect=fake_subprocess_run):
+        filename, content = await service.acquire_manifest("https://github.com/test/repo.git")
+        assert filename == "package.json"
+        assert content == b'{"name": "test-repo"}'
 
 @pytest.mark.asyncio
-@patch("app.services.repository_acquisition_service.asyncio.create_subprocess_exec")
-async def test_acquire_manifest_no_manifest(mock_create_subprocess, service):
-    mock_process = AsyncMock()
-    mock_process.communicate.return_value = (b"", b"")
-    mock_process.returncode = 0
-    mock_create_subprocess.return_value = mock_process
+async def test_acquire_manifest_no_manifest(service):
+    """Test that a repo with no manifest raises RepositoryAcquisitionError."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stderr = b""
 
-    with tempfile.TemporaryDirectory() as real_temp_dir:
-        async def mock_communicate(*args, **kwargs):
-            cloned_dir_path = mock_create_subprocess.call_args[0][5]
-            Path(cloned_dir_path).mkdir(parents=True, exist_ok=True)
-            return (b"", b"")
-                
-            mock_process.communicate = mock_communicate
-            
-            with pytest.raises(RepositoryAcquisitionError, match="No supported manifest found"):
-                await service.acquire_manifest("https://github.com/test/repo.git")
+    def fake_subprocess_run(cmd, **kwargs):
+        target_dir = Path(cmd[-1])
+        target_dir.mkdir(parents=True, exist_ok=True)
+        # No manifest files created intentionally
+        return mock_result
+
+    with patch.object(subprocess, "run", side_effect=fake_subprocess_run):
+        with pytest.raises(RepositoryAcquisitionError, match="No supported manifest found"):
+            await service.acquire_manifest("https://github.com/test/repo.git")
 
 @pytest.mark.asyncio
-@patch("app.services.repository_acquisition_service.asyncio.create_subprocess_exec")
-async def test_acquire_manifest_ambiguous(mock_create_subprocess, service):
-    mock_process = AsyncMock()
-    mock_process.communicate.return_value = (b"", b"")
-    mock_process.returncode = 0
-    mock_create_subprocess.return_value = mock_process
+async def test_acquire_manifest_ambiguous(service):
+    """Test that a repo with multiple manifests raises RepositoryAcquisitionError."""
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+    mock_result.stderr = b""
 
-    with tempfile.TemporaryDirectory() as real_temp_dir:
-        async def mock_communicate(*args, **kwargs):
-            cloned_dir_path = mock_create_subprocess.call_args[0][5]
-            Path(cloned_dir_path).mkdir(parents=True, exist_ok=True)
-            with open(Path(cloned_dir_path) / "package.json", "w") as f:
-                f.write('{"name": "test"}')
-            with open(Path(cloned_dir_path) / "requirements.txt", "w") as f:
-                f.write('flask')
-            return (b"", b"")
-            
-        mock_process.communicate = mock_communicate
-        
+    def fake_subprocess_run(cmd, **kwargs):
+        target_dir = Path(cmd[-1])
+        target_dir.mkdir(parents=True, exist_ok=True)
+        (target_dir / "package.json").write_text('{"name": "test"}')
+        (target_dir / "requirements.txt").write_text('flask')
+        return mock_result
+
+    with patch.object(subprocess, "run", side_effect=fake_subprocess_run):
         with pytest.raises(RepositoryAcquisitionError, match="Multiple supported manifests found; manual selection required"):
             await service.acquire_manifest("https://github.com/test/repo.git")
 
 @pytest.mark.asyncio
-@patch("app.services.repository_acquisition_service.asyncio.create_subprocess_exec")
-async def test_acquire_manifest_clone_fail(mock_create_subprocess, service):
-    mock_process = AsyncMock()
-    mock_process.communicate.return_value = (b"", b"Authentication failed")
-    mock_process.returncode = 128
-    mock_create_subprocess.return_value = mock_process
-    
-    with pytest.raises(RepositoryAcquisitionError, match="Private repository authentication is not supported."):
-        await service.acquire_manifest("https://github.com/test/private.git")
+async def test_acquire_manifest_clone_fail(service):
+    """Test that clone failures with auth errors are reported correctly."""
+    mock_result = MagicMock()
+    mock_result.returncode = 128
+    mock_result.stderr = b"Authentication failed\nfatal: Authentication failed"
+
+    with patch.object(subprocess, "run", return_value=mock_result):
+        with pytest.raises(RepositoryAcquisitionError, match="Private repository authentication is not supported."):
+            await service.acquire_manifest("https://github.com/test/private.git")
 
 @pytest.mark.asyncio
-@patch("app.services.repository_acquisition_service.asyncio.create_subprocess_exec")
-async def test_acquire_manifest_timeout(mock_create_subprocess, service):
-    mock_process = AsyncMock()
-    
-    async def mock_communicate(*args, **kwargs):
-        raise asyncio.TimeoutError()
-        
-    mock_process.communicate = mock_communicate
-    mock_create_subprocess.return_value = mock_process
-    
-    with pytest.raises(RepositoryAcquisitionError, match="Git clone timed out."):
-        await service.acquire_manifest("https://github.com/test/slow.git")
+async def test_acquire_manifest_timeout(service):
+    """Test that clone timeouts are reported correctly."""
+    def timeout_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, 60.0)
+
+    with patch.object(subprocess, "run", side_effect=timeout_run):
+        with pytest.raises(RepositoryAcquisitionError, match="Git clone timed out"):
+            await service.acquire_manifest("https://github.com/test/slow.git")

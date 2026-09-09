@@ -1,11 +1,10 @@
-"""Durable Background Worker for Report Generation."""
-
 import asyncio
 import logging
 import socket
 import sys
 import uuid
 from datetime import timedelta
+from typing import Tuple, Optional
 
 from sqlalchemy import select, or_, and_, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +28,7 @@ class ReportWorker:
         self.worker_id = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
         self.is_running = False
 
-    async def claim_job(self, db: AsyncSession) -> tuple[Report | None, str | None]:
+    async def claim_job(self, db: AsyncSession) -> Tuple[Optional[Report], Optional[str]]:
         """Atomically claim a report for generation using FOR UPDATE SKIP LOCKED."""
         now = utc_now()
 

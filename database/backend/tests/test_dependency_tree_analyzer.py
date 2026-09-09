@@ -458,7 +458,8 @@ def test_json_report_contains_tree_section():
     data = json.loads(raw)
 
     section_titles = [s["title"] for s in data["sections"]]
-    assert "Dependency Tree Summary" in section_titles
+    # Titles are numbered (e.g. "5. Dependency Tree Summary") — use substring match
+    assert any("Dependency Tree Summary" in t for t in section_titles)
 
 
 # ---------------------------------------------------------------------------
@@ -507,9 +508,10 @@ def test_software_inventory_metadata_section_present():
     data = json.loads(raw)
 
     section_titles = [s["title"] for s in data["sections"]]
-    assert "Software Inventory Metadata" in section_titles
+    # Titles are numbered (e.g. "6. Software Inventory Metadata") — use substring match
+    assert any("Software Inventory Metadata" in t for t in section_titles)
 
-    sbom_section = next(s for s in data["sections"] if s["title"] == "Software Inventory Metadata")
+    sbom_section = next(s for s in data["sections"] if "Software Inventory Metadata" in s["title"])
     content = sbom_section["content"]
 
     # Must explicitly state no standards-compliant SBOM was generated

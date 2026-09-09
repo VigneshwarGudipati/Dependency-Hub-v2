@@ -68,11 +68,12 @@ def mock_registry_service(monkeypatch):
     monkeypatch.setattr("app.services.scan_worker.RegistryIntelligenceService.get_package_metadata", mock_get_metadata)
 
 def test_dependencies_list_empty(client):
-    from tests.test_scans import _register_and_login
+    from tests.test_scans import _register_and_login, _create_project
     token = _register_and_login(client)
+    proj = _create_project(client, token)
 
     resp = client.get(
-        "/api/v1/dependencies",
+        f"/api/v1/projects/{proj['id']}/dependencies",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert resp.status_code == 200
@@ -108,7 +109,7 @@ def test_dependencies_list_and_detail(client):
     assert completed is True
 
     # 2. List dependencies
-    resp = client.get("/api/v1/dependencies", headers=headers)
+    resp = client.get(f"/api/v1/projects/{proj['id']}/dependencies", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] > 0
@@ -122,7 +123,7 @@ def test_dependencies_list_and_detail(client):
 
     # 3. Get details
     dep_id = item["id"]
-    detail_resp = client.get(f"/api/v1/dependencies/{dep_id}", headers=headers)
+    detail_resp = client.get(f"/api/v1/projects/{proj['id']}/dependencies/{dep_id}", headers=headers)
     assert detail_resp.status_code == 200
     detail = detail_resp.json()
     assert detail["id"] == dep_id
@@ -156,19 +157,18 @@ def test_dependencies_tenant_isolation(client):
             break
 
     # Tenant A should see dependencies
-    resp_a = client.get("/api/v1/dependencies", headers=headers_a)
+    resp_a = client.get(f"/api/v1/projects/{proj['id']}/dependencies", headers=headers_a)
     assert resp_a.status_code == 200
     assert resp_a.json()["total"] > 0
 
     dep_id = resp_a.json()["items"][0]["id"]
 
-    # Tenant B should see nothing
-    resp_b = client.get("/api/v1/dependencies", headers=headers_b)
-    assert resp_b.status_code == 200
-    assert resp_b.json()["total"] == 0
+    # Tenant B should get 404 because they don't own proj
+    resp_b = client.get(f"/api/v1/projects/{proj['id']}/dependencies", headers=headers_b)
+    assert resp_b.status_code == 404
 
     # Tenant B cannot access Tenant A's dependency detail
-    detail_b = client.get(f"/api/v1/dependencies/{dep_id}", headers=headers_b)
+    detail_b = client.get(f"/api/v1/projects/{proj['id']}/dependencies/{dep_id}", headers=headers_b)
     assert detail_b.status_code == 404
 
 def test_dependencies_filters(client):
@@ -187,30 +187,30 @@ def test_dependencies_filters(client):
             break
 
     # 1. Project filtering
-    resp_proj = client.get(f"/api/v1/dependencies?project_id={proj['id']}", headers=headers)
+    resp_proj = client.get(f"/api/v1/projects/{proj['id']}/dependencies", headers=headers)
     assert resp_proj.json()["total"] > 0
 
-    # Dummy project ID returns 0
+    # Dummy project ID returns 404
     import uuid
-    resp_dummy = client.get(f"/api/v1/dependencies?project_id={str(uuid.uuid4())}", headers=headers)
-    assert resp_dummy.json()["total"] == 0
+    resp_dummy = client.get(f"/api/v1/projects/{str(uuid.uuid4())}/dependencies", headers=headers)
+    assert resp_dummy.status_code == 404
 
     # 2. Status filtering (safe vs vulnerable)
-    resp_safe = client.get("/api/v1/dependencies?status=safe", headers=headers)
+    resp_safe = client.get(f"/api/v1/projects/{proj['id']}/dependencies?status=safe", headers=headers)
     assert resp_safe.status_code == 200
     # ensure no items in safe have vulnerable status
     for item in resp_safe.json()["items"]:
         assert item["status"] == "safe"
 
-    resp_vuln = client.get("/api/v1/dependencies?status=vulnerable", headers=headers)
+    resp_vuln = client.get(f"/api/v1/projects/{proj['id']}/dependencies?status=vulnerable", headers=headers)
     assert resp_vuln.status_code == 200
     for item in resp_vuln.json()["items"]:
         assert item["status"] == "vulnerable"
     # 3. Search query
-    all_items_resp = client.get("/api/v1/dependencies", headers=headers)
+    all_items_resp = client.get(f"/api/v1/projects/{proj['id']}/dependencies", headers=headers)
     if all_items_resp.json()["total"] > 0:
         first_item_name = all_items_resp.json()["items"][0]["name"]
-        resp_search = client.get(f"/api/v1/dependencies?query={first_item_name}", headers=headers)
+        resp_search = client.get(f"/api/v1/projects/{proj['id']}/dependencies?query={first_item_name}", headers=headers)
         assert resp_search.json()["total"] > 0
         assert all(first_item_name.lower() in item["name"].lower() for item in resp_search.json()["items"])
 
@@ -218,16 +218,17 @@ def test_dependencies_filters(client):
     # This assumes mock data setup produces at least one outdated dependency
     # In test_dependencies_registry_metadata we know axios is TRUE and express is UNKNOWN.
     # But here in test_dependencies_filters, we just test that the API accepts the filter and returns 200.
-    resp_outdated = client.get("/api/v1/dependencies?status=outdated", headers=headers)
+    resp_outdated = client.get(f"/api/v1/projects/{proj['id']}/dependencies?status=outdated", headers=headers)
     assert resp_outdated.status_code == 200
 
 def test_rbac_dependency(client):
-    from tests.test_scans import _register_and_login
+    from tests.test_scans import _register_and_login, _create_project
     token = _register_and_login(client)
+    proj = _create_project(client, token)
 
     # In this test setup, registering gives the user OWNER role which has dependency.read.
     # So this should work.
-    resp = client.get("/api/v1/dependencies", headers={"Authorization": f"Bearer {token}"})
+    resp = client.get(f"/api/v1/projects/{proj['id']}/dependencies", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
 
 def test_dependencies_registry_metadata(client):
@@ -261,7 +262,7 @@ def test_dependencies_registry_metadata(client):
         if st.json()["status"] == "COMPLETED":
             break
 
-    resp = client.get("/api/v1/dependencies", headers=headers)
+    resp = client.get(f"/api/v1/projects/{proj['id']}/dependencies", headers=headers)
     items = resp.json()["items"]
     assert len(items) == 3
 
@@ -283,3 +284,42 @@ def test_dependencies_registry_metadata(client):
     assert unknown["outdated"] == "UNKNOWN"
     assert unknown["registrySource"] == "npm"
     assert unknown["registryStatus"] == "PROVIDER_UNAVAILABLE"
+
+def test_dependencies_project_isolation(client):
+    from tests.test_scans import _register_and_login, _create_project, _create_artifact
+    import time
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    proj_a = _create_project(client, token)
+    proj_b = _create_project(client, token)
+
+    # Artifact and scan for proj A
+    artifact_a = _create_artifact(client, token, proj_a["id"])
+    scan_resp = client.post(f"/api/v1/projects/{proj_a['id']}/scans", headers=headers, json={"artifact_id": artifact_a["id"], "scan_type": "FULL"})
+
+    for _ in range(20):
+        time.sleep(0.1)
+        if client.get(f"/api/v1/projects/{proj_a['id']}/scans/{scan_resp.json()['id']}", headers=headers).json()["status"] == "COMPLETED":
+            break
+
+    deps_a = client.get(f"/api/v1/projects/{proj_a['id']}/dependencies", headers=headers).json()
+    if deps_a.get("items"):
+        dep_id = deps_a["items"][0]["id"]
+        # Try to access it from proj B
+        res = client.get(f"/api/v1/projects/{proj_b['id']}/dependencies/{dep_id}", headers=headers)
+        assert res.status_code == 404, "Project scoping not enforced on dependencies"
+
+def test_graph_project_isolation(client):
+    from tests.test_scans import _register_and_login, _create_project
+    token = _register_and_login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    proj_a = _create_project(client, token)
+    proj_b = _create_project(client, token)
+
+    # We can't easily cross-pollinate graph IDs as the graph endpoint is just `/projects/{id}/dependencies/graph`
+    # But we can verify that getting the graph for proj_b is isolated to proj_b (returns empty if no scans)
+    res_b = client.get(f"/api/v1/projects/{proj_b['id']}/graph", headers=headers)
+    assert res_b.status_code == 200
+    assert len(res_b.json()["nodes"]) == 0

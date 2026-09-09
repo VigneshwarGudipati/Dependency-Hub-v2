@@ -136,6 +136,7 @@ async def list_dependencies(
 async def get_dependency_detail(
     db: AsyncSession,
     organization_id: uuid.UUID,
+    project_id: uuid.UUID,
     dependency_id: uuid.UUID
 ) -> Optional[DependencyPackage]:
     # 1. Fetch the dependency
@@ -153,7 +154,7 @@ async def get_dependency_detail(
         return None
 
     # 2. Enforce tenant isolation via the project
-    if dep.project.organization_id != organization_id:
+    if dep.project.organization_id != organization_id or dep.project_id != project_id:
         return None
 
     # 3. Check if it belongs to the *latest* scan for that project (optional, but good for consistency)

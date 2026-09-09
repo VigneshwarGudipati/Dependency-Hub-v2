@@ -2,6 +2,7 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Optional, Dict, Any, List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 class ScanEngine:
     """The core engine that runs the analysis phases (extraction, parsing, matching)."""
 
-    def _get_concrete_version(self, constraint: str | None) -> str | None:
+    def _get_concrete_version(self, constraint: Optional[str]) -> Optional[str]:
         if not constraint or constraint == "*":
             return None
         # Exclude typical semver operators and wildcards, including strict equality ==

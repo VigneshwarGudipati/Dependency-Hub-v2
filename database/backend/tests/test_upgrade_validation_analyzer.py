@@ -195,9 +195,10 @@ def test_json_rendering():
     data = json.loads(raw)
 
     section_titles = [s["title"] for s in data["sections"]]
-    assert "A. Pre-Upgrade Checklist" in section_titles
-    assert "B. Upgrade & Rollback Plan" in section_titles
-    assert "C. Post-Upgrade Validation Matrix" in section_titles
+    # Titles are numbered (e.g. "11. Pre-Upgrade Checklist") — use substring match
+    assert any("Pre-Upgrade Checklist" in t for t in section_titles)
+    assert any("Upgrade" in t and "Rollback" in t for t in section_titles)
+    assert any("Post-Upgrade Validation Matrix" in t for t in section_titles)
 
 def test_html_rendering():
     """21. HTML rendering"""
